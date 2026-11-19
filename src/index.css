@@ -1,0 +1,308 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   1. Primitive (Raw) Color Tokens
+   ═══════════════════════════════════════════════════════════════════════════════ */
+:root {
+  --dgem-white: #ffffff;
+  --dgem-gray-50: #fafafa;
+  --dgem-gray-100: #f5f5f5;
+  --dgem-gray-200: #ececec;
+  --dgem-gray-300: #d4d4d4;
+  --dgem-gray-400: #a3a3a3;
+  --dgem-gray-500: #737373;
+  --dgem-gray-600: #525252;
+  --dgem-gray-700: #404040;
+  --dgem-gray-800: #262626;
+  --dgem-gray-900: #171717;
+  --dgem-dark-blue: #121a38;
+  --dgem-blue: #0058ab;
+  --dgem-light-blue: #1db8f2;
+  --dgem-cyan: #02cdc9;
+  --dgem-violet: #6741d9;
+  --dgem-grape: #ae3ec9;
+  --dgem-green: #38b24c;
+  --dgem-lime: #82c91e;
+  --dgem-yellow: #ffc200;
+  --dgem-orange: #ff922a;
+  --dgem-red: #ff304d;
+  --dgem-light-grayish-blue: #e2e8f0;
+  --fiord: #45556c;
+  --deep-blue: #0f172b;
+  --bright-black: #202224;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   2. Semantic Tokens (Theme-Based)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* ─── Status: Completed (green) ──────────────────────────────────────────── */
+  --status-completed-fg: var(--dgem-green);
+  --status-completed-bg: #edfcf0;
+  --status-completed-border: #a3e6b0;
+  --status-completed-icon: var(--dgem-green);
+
+  /* ─── Status: In Progress (blue) ─────────────────────────────────────────── */
+  --status-in-progress-fg: var(--dgem-blue);
+  --status-in-progress-bg: #e8f1fa;
+  --status-in-progress-border: #a8d0f0;
+  --status-in-progress-icon: var(--dgem-blue);
+
+  /* ─── Status: Pending (gray) ─────────────────────────────────────────────── */
+  --status-pending-fg: var(--dgem-gray-500);
+  --status-pending-bg: var(--dgem-gray-50);
+  --status-pending-border: var(--dgem-gray-300);
+  --status-pending-icon: var(--dgem-gray-400);
+
+  /* ─── Status: Failed (red) ───────────────────────────────────────────────── */
+  --status-failed-fg: var(--dgem-red);
+  --status-failed-bg: #fff1f3;
+  --status-failed-border: #fca5b0;
+  --status-failed-icon: var(--dgem-red);
+
+  /* ─── Status: Action Required (orange) ───────────────────────────────────── */
+  --status-action-required-fg: var(--dgem-orange);
+  --status-action-required-bg: #fff8f0;
+  --status-action-required-border: #ffd1a3;
+  --status-action-required-icon: var(--dgem-orange);
+
+  /* ─── Brand / Primary ────────────────────────────────────────────────────── */
+  --brand-primary: var(--dgem-blue);
+  --brand-primary-hover: #003f7d;
+  --brand-primary-light: #e8f1fa;
+  --brand-primary-surface: #f0f7ff;
+  --brand-dark: var(--dgem-dark-blue);
+
+  /* ─── Surfaces & Text ────────────────────────────────────────────────────── */
+  --surface-page: var(--dgem-gray-50);
+  --surface-card: var(--dgem-white);
+  --surface-elevated: var(--dgem-white);
+  --surface-muted: var(--dgem-gray-50);
+  --border-default: var(--dgem-gray-200);
+  --border-strong: var(--dgem-gray-300);
+  --text-primary: var(--dgem-gray-900);
+  --text-secondary: var(--dgem-gray-700);
+  --text-tertiary: var(--dgem-gray-500);
+  --text-disabled: var(--dgem-gray-400);
+  --text-inverse: var(--dgem-white);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   3. Tailwind @theme Integration
+   ═══════════════════════════════════════════════════════════════════════════════ */
+@theme {
+  --font-family-sans: "Inter", system-ui, -apple-system, sans-serif;
+
+  /* Brand / Primary */
+  --color-brand: var(--brand-primary);
+  --color-brand-hover: var(--brand-primary-hover);
+  --color-brand-light: var(--brand-primary-light);
+  --color-brand-surface: var(--brand-primary-surface);
+
+  /* Status: Completed */
+  --color-completed: var(--status-completed-fg);
+  --color-completed-dark: #2d8f3d;
+  --color-completed-light: var(--status-completed-bg);
+  --color-completed-border: var(--status-completed-border);
+
+  /* Status: Action Required / Warning */
+  --color-warning: var(--status-action-required-fg);
+  --color-warning-dark: #e07a1e;
+  --color-warning-light: var(--status-action-required-bg);
+  --color-warning-border: var(--status-action-required-border);
+
+  /* Status: Failed / Error */
+  --color-failed: var(--status-failed-fg);
+  --color-failed-dark: #d6253f;
+  --color-failed-light: var(--status-failed-bg);
+  --color-failed-border: var(--status-failed-border);
+
+  /* Status: Pending */
+  --color-pending: var(--status-pending-fg);
+  --color-pending-light: var(--status-pending-bg);
+  --color-pending-border: var(--status-pending-border);
+
+  /* Status: In Progress */
+  --color-in-progress: var(--status-in-progress-fg);
+  --color-in-progress-light: var(--status-in-progress-bg);
+  --color-in-progress-border: var(--status-in-progress-border);
+
+  /* Neutrals (dgem gray scale) */
+  --color-gray-50: var(--dgem-gray-50);
+  --color-gray-100: var(--dgem-gray-100);
+  --color-gray-200: var(--dgem-gray-200);
+  --color-gray-300: var(--dgem-gray-300);
+  --color-gray-400: var(--dgem-gray-400);
+  --color-gray-500: var(--dgem-gray-500);
+  --color-gray-600: var(--dgem-gray-600);
+  --color-gray-700: var(--dgem-gray-700);
+  --color-gray-800: var(--dgem-gray-800);
+  --color-gray-900: var(--dgem-gray-900);
+
+  /* Source badge colors */
+  --color-source-email-bg: #eff6ff;
+  --color-source-email-border: #bfdbfe;
+  --color-source-oracle-bg: #fff1f2;
+  --color-source-oracle-border: #fecdd3;
+  --color-source-sharedrive-bg: #f0fdf4;
+  --color-source-sharedrive-border: #bbf7d0;
+  --color-source-uploaded-bg: #ecfeff;
+  --color-source-uploaded-border: #67e8f9;
+  --color-source-oracle-icon: #dc2626;
+  --color-source-uploaded-icon: #0891b2;
+
+  /* Document preview */
+  --color-doc-header-bg: #c7d2fe;
+  --color-doc-alt-row: #eff6ff;
+
+  /* Misc */
+  --color-amber: #f59e0b;
+
+  /* Brand dark */
+  --color-brand-dark: var(--brand-dark);
+
+  /* Status icon colors */
+  --color-completed-icon: var(--status-completed-icon);
+  --color-in-progress-icon: var(--status-in-progress-icon);
+  --color-pending-icon: var(--status-pending-icon);
+  --color-failed-icon: var(--status-failed-icon);
+  --color-warning-icon: var(--status-action-required-icon);
+
+  /* Surfaces */
+  --color-surface-page: var(--surface-page);
+  --color-surface-card: var(--surface-card);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-muted: var(--surface-muted);
+
+  /* Borders */
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+
+  /* Text */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-disabled: var(--text-disabled);
+  --color-text-inverse: var(--text-inverse);
+
+  --color-border-light-grayish-blue: var(--dgem-light-grayish-blue);
+  --color-fiord: var(--fiord);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   4. Base Styles
+   ═══════════════════════════════════════════════════════════════════════════════ */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-size: 14px;
+  color: var(--text-primary);
+  background-color: var(--surface-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   5. Scrollbar
+   ═══════════════════════════════════════════════════════════════════════════════ */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #e8f8fe;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb {
+  background: #1db8f2;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #17a3d9;
+}
+
+/* Scoped scrollbar classes (same color, kept for explicit usage) */
+.scrollbar-blue::-webkit-scrollbar-thumb {
+  background: #1db8f2;
+}
+.scrollbar-doc::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.scrollbar-doc::-webkit-scrollbar-track {
+  background: #e8f8fe;
+  border-radius: 3px;
+}
+.scrollbar-doc::-webkit-scrollbar-thumb {
+  background: #1db8f2;
+  border-radius: 3px;
+}
+.scrollbar-doc::-webkit-scrollbar-thumb:hover {
+  background: #17a3d9;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   6. Animations
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.stage-content {
+  transition: all 0.2s ease-in-out;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.progress-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--brand-primary) 25%,
+    var(--dgem-light-blue) 50%,
+    var(--brand-primary) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes progress-bar {
+  0% {
+    width: 0%;
+  }
+  50% {
+    width: 70%;
+  }
+  90% {
+    width: 90%;
+  }
+  100% {
+    width: 95%;
+  }
+}
+.animate-progress-bar {
+  animation: progress-bar 2.5s ease-out forwards;
+}

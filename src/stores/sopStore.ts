@@ -1,0 +1,122 @@
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
+
+export type SOPStatus = "Active" | "Inactive";
+export type SOPRuleStatus = "Approved" | "Rejected" | "Pending";
+
+export interface SOPRule {
+  id: string;
+  order: number;
+  title: string;
+  text: string;
+  type: string;
+  status: SOPRuleStatus;
+}
+
+export interface SOPEntry {
+  id: string;
+  sopCode: string;
+  name: string;
+  version: string;
+  country: string;
+  category: string;
+  lastUpdated: string;
+  status: SOPStatus;
+  mappedJournalEntries: string[];
+  rules: SOPRule[];
+}
+
+const getSOPNameFromFile = (
+  fileName: string,
+): { name: string; category: string } => {
+  const name = fileName
+    .replace(/\.[^.]+$/, "")
+    .replace(/[_-]+/g, " ")
+    .trim();
+  const lowerName = name.toLowerCase();
+  const category = lowerName.includes("payroll")
+    ? "Payroll"
+    : lowerName.includes("tax")
+      ? "Tax"
+      : "Accrual";
+
+  return { name: name || "Uploaded SOP", category };
+};
+
+const normalizeSOPName = (name: string): string =>
+  name.toLowerCase().replace(/\s+/g, " ").trim();
+
+interface SOPStore {
+  sopEntries: SOPEntry[];
+  addEntry: (fileName: string, rules: SOPRule[]) => boolean;
+  setEntries: (entries: SOPEntry[]) => void;
+  updateEntry: (id: string, updates: Partial<SOPEntry>) => void;
+}
+
+export const useSOPStore = create<SOPStore>()(
+  persist(
+    (set) => ({
+      sopEntries: [],
+
+      addEntry: (fileName, rules) => {
+        const { name: sopName, category } = getSOPNameFromFile(fileName);
+        const lastUpdated = new Date().toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        });
+        const now = Date.now();
+        let isNewEntry = false;
+        const copiedRules = rules.map((rule) => ({ ...rule }));
+
+        set((state) => {
+          const existingEntry = state.sopEntries.find(
+            (entry) => normalizeSOPName(entry.name) === normalizeSOPName(sopName),
+          );
+
+          if (existingEntry) {
+            return {
+              sopEntries: state.sopEntries.map((entry) =>
+                entry.id === existingEntry.id
+                  ? { ...entry, name: sopName, category, lastUpdated, rules: copiedRules }
+                  : entry,
+              ),
+            };
+          }
+
+          isNewEntry = true;
+          const newEntry: SOPEntry = {
+            id: `sop-parsed-${now}`,
+            sopCode: `SOP-${now.toString(36).toUpperCase()}`,
+            name: sopName,
+            version: "v1.0",
+            country: "India",
+            category,
+            lastUpdated,
+            status: "Active",
+            mappedJournalEntries: [],
+            rules: copiedRules,
+          };
+
+          return { sopEntries: [newEntry, ...state.sopEntries] };
+        });
+
+        return isNewEntry;
+      },
+
+      setEntries: (entries) => set({ sopEntries: entries }),
+
+      updateEntry: (id, updates) =>
+        set((state) => ({
+          sopEntries: state.sopEntries.map((entry) =>
+            entry.id === id ? { ...entry, ...updates } : entry
+          ),
+        })),
+    }),
+    {
+      name: "sop-library",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ sopEntries: state.sopEntries }),
+    },
+  ),
+);
