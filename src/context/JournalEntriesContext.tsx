@@ -1,13 +1,14 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import type { JEStatus, JournalEntry, StageData } from '../types';
 import { STD_BUSINESS_RULE_CATEGORIES, ENTRY_PATH_MAP } from '../data/mockData';
+import { DEFAULT_LOB, type SOPLob } from '../data/ruleSets';
 
 const initialEntries: JournalEntry[] = [];
 
 interface JournalEntriesContextType {
   entries: JournalEntry[];
   updateEntryStatus: (id: string, status: JEStatus) => void;
-  addEntryFromSOP: (fileName: string) => void;
+  addEntryFromSOP: (fileName: string, lob?: SOPLob) => void;
 }
 
 const JournalEntriesContext = createContext<JournalEntriesContextType>({
@@ -105,7 +106,7 @@ export const JournalEntriesProvider: React.FC<{ children: React.ReactNode }> = (
     });
   }, []);
 
-  const addEntryFromSOP = useCallback((fileName: string) => {
+  const addEntryFromSOP = useCallback((fileName: string, lob: SOPLob = DEFAULT_LOB) => {
     const now = new Date();
     const newEntry: JournalEntry = {
       id: createJournalId(),
@@ -113,7 +114,7 @@ export const JournalEntriesProvider: React.FC<{ children: React.ReactNode }> = (
       jeCategory: 'Standard',
       country: 'India',
       jeType: 'Accrual',
-      lob: 'Logistics',
+      lob,
       processDate: formatProcessDate(now),
       status: 'pending',
       sop: getSOPName(fileName),

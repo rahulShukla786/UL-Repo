@@ -10,6 +10,7 @@ import { cn } from "../lib/utils";
 import { useJournalEntries } from "../context/JournalEntriesContext";
 import { useSOPStore } from "../stores/sopStore";
 import type { SOPEntry, SOPStatus } from "../stores/sopStore";
+import type { SOPLob } from "../data/ruleSets";
 import type { ColumnDef } from "@tanstack/react-table";
 
 const SOP_CATEGORIES = [
@@ -68,10 +69,11 @@ export const SOPTerminal: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<SOPStatus | "All">("All");
   const [selectedCountry, setSelectedCountry] = useState(SOP_COUNTRIES[0]);
 
-  const handleSaveToLibrary = useCallback((fileName: string, rules: SOPEntry["rules"]) => {
-    const isNewEntry = addEntry(fileName, rules);
+  const handleSaveToLibrary = useCallback((fileName: string, rules: SOPEntry["rules"], lob: SOPLob) => {
+    const isNewEntry = addEntry(fileName, rules, lob);
     if (isNewEntry) {
-      addEntryFromSOP(fileName);
+      // Journal Entry row gets the same LOB (Logistics / Warehouse)
+      addEntryFromSOP(fileName, lob);
     }
     setActiveTab("SOP Library");
   }, [addEntry, addEntryFromSOP]);
@@ -119,6 +121,10 @@ export const SOPTerminal: React.FC = () => {
     {
       header: "CATEGORY",
       accessorKey: "category",
+    },
+    {
+      header: "LOB",
+      accessorKey: "lob",
     },
     {
       header: "LAST UPDATED",

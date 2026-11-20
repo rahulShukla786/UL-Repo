@@ -6,13 +6,14 @@ import {
 import { ParserExtractingOverlay } from "./ParserExtractingOverlay";
 import { ParserRulesStage } from "./ParserRulesStage";
 import type { SOPRule } from "../../stores/sopStore";
+import { guessLobFromFileName, type SOPLob } from "../../data/ruleSets";
 
 const ALLOWED_TYPES = ["pdf", "doc", "docx", "txt"];
 
 type ParserPhase = "upload" | "extracting" | "rules";
 
 interface SOPParserPanelProps {
-  onSaveToLibrary?: (fileName: string, rules: SOPRule[]) => void;
+  onSaveToLibrary?: (fileName: string, rules: SOPRule[], lob: SOPLob) => void;
 }
 
 export const SOPParserPanel: React.FC<SOPParserPanelProps> = ({ onSaveToLibrary }) => {
@@ -21,6 +22,7 @@ export const SOPParserPanel: React.FC<SOPParserPanelProps> = ({ onSaveToLibrary 
   const [repoConnected, setRepoConnected] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [phase, setPhase] = useState<ParserPhase>("upload");
+  const [lob, setLob] = useState<SOPLob | null>(null);
 
   const processFile = (file?: File | null) => {
     if (!file) return;
@@ -31,6 +33,8 @@ export const SOPParserPanel: React.FC<SOPParserPanelProps> = ({ onSaveToLibrary 
       sizeKb: Math.max(1, Math.round(file.size / 1024)),
     });
     setRepoConnected(false);
+    // Pre-select the SOP type from the file name (e.g. "..._WH_..." = Warehouse); user can change it
+    setLob(guessLobFromFileName(file.name));
   };
 
   const handleBrowse = () => {
@@ -49,6 +53,7 @@ export const SOPParserPanel: React.FC<SOPParserPanelProps> = ({ onSaveToLibrary 
   };
 
   const handleExtract = () => {
+    if (!lob) return;
     setPhase("extracting");
     setTimeout(() => {
       setPhase("rules");
@@ -78,17 +83,24 @@ export const SOPParserPanel: React.FC<SOPParserPanelProps> = ({ onSaveToLibrary 
           onDragLeave={() => setIsDragOver(false)}
           onRemove={() => {
             setUploadedFile(null);
+            setLob(null);
             setPhase("upload");
           }}
           repoConnected={repoConnected}
           isExtracting={phase === "extracting"}
+          lob={lob}
+          onLobChange={setLob}
           onToggleConnect={() => setRepoConnected((prev) => !prev)}
           onExtract={handleExtract}
         />
       ) : null}
 
-      {phase === "rules" && uploadedFile ? (
-        <ParserRulesStage uploadedFile={uploadedFile} onSaveToLibrary={onSaveToLibrary} />
+      {phase === "rules" && uploadedFile && lob ? (
+        <ParserRulesStage
+          uploadedFile={uploadedFile}
+          lob={lob}
+          onSaveToLibrary={onSaveToLibrary}
+        />
       ) : null}
 
       {phase === "extracting" ? <ParserExtractingOverlay /> : null}

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { DEFAULT_LOB, isSOPLob, type SOPLob } from "../data/ruleSets";
 
 export type SOPStatus = "Active" | "Inactive";
 export type SOPRuleStatus = "Approved" | "Rejected" | "Pending";
@@ -20,6 +21,8 @@ export interface SOPEntry {
   version: string;
   country: string;
   category: string;
+  /** Line of Business: Logistics or Warehouse (decides which rule set applies) */
+  lob: SOPLob;
   lastUpdated: string;
   status: SOPStatus;
   mappedJournalEntries: string[];
@@ -48,7 +51,7 @@ const normalizeSOPName = (name: string): string =>
 
 interface SOPStore {
   sopEntries: SOPEntry[];
-  addEntry: (fileName: string, rules: SOPRule[]) => boolean;
+  addEntry: (fileName: string, rules: SOPRule[], lob: SOPLob) => boolean;
   setEntries: (entries: SOPEntry[]) => void;
   updateEntry: (id: string, updates: Partial<SOPEntry>) => void;
 }
@@ -58,7 +61,7 @@ export const useSOPStore = create<SOPStore>()(
     (set) => ({
       sopEntries: [],
 
-      addEntry: (fileName, rules) => {
+      addEntry: (fileName, rules, lob) => {
         const { name: sopName, category } = getSOPNameFromFile(fileName);
         const lastUpdated = new Date().toLocaleDateString("en-GB", {
           day: "2-digit",
@@ -78,7 +81,7 @@ export const useSOPStore = create<SOPStore>()(
             return {
               sopEntries: state.sopEntries.map((entry) =>
                 entry.id === existingEntry.id
-                  ? { ...entry, name: sopName, category, lastUpdated, rules: copiedRules }
+                  ? { ...entry, name: sopName, category, lob, lastUpdated, rules: copiedRules }
                   : entry,
               ),
             };
@@ -92,6 +95,7 @@ export const useSOPStore = create<SOPStore>()(
             version: "v1.0",
             country: "India",
             category,
+            lob,
             lastUpdated,
             status: "Active",
             mappedJournalEntries: [],
@@ -117,6 +121,17 @@ export const useSOPStore = create<SOPStore>()(
       name: "sop-library",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ sopEntries: state.sopEntries }),
+      // SOPs saved before LOB existed are Logistics
+      merge: (persisted, current) => {
+        const stored = (persisted as Partial<SOPStore> | undefined)?.sopEntries ?? [];
+        return {
+          ...current,
+          sopEntries: stored.map((entry) => ({
+            ...entry,
+            lob: isSOPLob(entry.lob) ? entry.lob : DEFAULT_LOB,
+          })),
+        };
+      },
     },
   ),
 );
