@@ -205,6 +205,8 @@ export interface StageData {
   outputPreviewTable?: SourcePreviewTable;
   // Multiple output file previews (e.g. Stage 3 Data Processing 2 summaries)
   outputPreviewTables?: SourcePreviewTable[];
+  // Reference files offered in the "Reference Files" download menu of a stage
+  stageReferenceFiles?: StageReferenceFile[];
   // Per-source extracted fields (indexed by source position) — summary changes on file select
   extractedFieldsBySource?: ExtractedField[][];
   // Data Validation
@@ -239,6 +241,11 @@ export interface StageData {
   exceptionMessage?: string;
   exceptionActionButtons?: string[];
   agentMessages?: AgentMessage[];
+}
+
+export interface StageReferenceFile {
+  fileName: string;
+  downloadUrl: string;
 }
 
 export interface SourcePreviewTable {

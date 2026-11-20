@@ -2,13 +2,14 @@ import React, { useState, useEffect } from "react";
 import {
   ChevronLeft,
   ChevronRight,
+  Download,
   Mail,
   Database,
   Upload,
   Check,
   X,
 } from "lucide-react";
-import type { StageData, SourceFile } from "../../../types";
+import type { StageData, SourceFile, StageReferenceFile } from "../../../types";
 import { DocumentPreview } from "../DocumentPreview";
 import { ExtractedDataSummary } from "../ExtractedDataSummary";
 import { ExceptionPanel } from "../ExceptionPanel";
@@ -56,6 +57,36 @@ const ExcelLogo: React.FC<{ size?: number; className?: string }> = ({
 );
 
 const isExcelFile = (name: string) => /\.(xlsx|xls|csv|excel)$/i.test(name);
+
+// Reference files shown inline: [download icon] file name, one after another.
+// Clicking a file downloads it.
+const ReferenceFilesList: React.FC<{ files: StageReferenceFile[] }> = ({ files }) => {
+  const handleDownload = (file: StageReferenceFile) => {
+    const a = document.createElement("a");
+    a.href = file.downloadUrl;
+    a.download = file.fileName;
+    a.click();
+  };
+
+  return (
+    <div className="flex items-center gap-2 flex-shrink-0">
+      <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+        Reference Files
+      </span>
+      {files.map((file) => (
+        <button
+          key={file.fileName}
+          onClick={() => handleDownload(file)}
+          title={`Download ${file.fileName}`}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-brand bg-white border border-brand rounded-lg hover:bg-brand-surface transition-colors cursor-pointer"
+        >
+          <Download size={14} />
+          {file.fileName}
+        </button>
+      ))}
+    </div>
+  );
+};
 
 const SourceCard: React.FC<{
   source: SourceFile;
@@ -174,11 +205,16 @@ export const DataExtraction: React.FC<DataExtractionProps> = ({
 
   return (
     <div className="mt-2 space-y-4">
-      {/* Source count info */}
-      <p className="text-[13px] text-gray-700">
-        {stage.extractedCount} sources extracted &middot; {stage.totalRecords}{" "}
-        total records. Click a file name to preview
-      </p>
+      {/* Source count info + optional Reference Files download buttons */}
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[13px] text-gray-700">
+          {stage.extractedCount} sources extracted &middot; {stage.totalRecords}{" "}
+          total records. Click a file name to preview
+        </p>
+        {stage.stageReferenceFiles && stage.stageReferenceFiles.length > 0 && (
+          <ReferenceFilesList files={stage.stageReferenceFiles} />
+        )}
+      </div>
 
       {/* Source Carousel */}
       <div className="flex items-center gap-2">
@@ -246,15 +282,16 @@ export const DataExtraction: React.FC<DataExtractionProps> = ({
               stage.sourcePreviewTables?.[selectedSourceIndex]?.extractedFields ||
               stage.extractedFieldsBySource?.[selectedSourceIndex];
             const fields = perSourceFields || stage.extractedFields;
-            if (!fields) return null;
+            const rules = stage.sourcePreviewTables?.[selectedSourceIndex]?.rules;
+            if (!fields && !rules?.length) return null;
             return (
               <div className="flex-shrink-0">
                 <ExtractedDataSummary
-                  fields={fields}
-                  extractedCount={fields.length}
+                  fields={fields || []}
+                  extractedCount={fields?.length || 0}
                   confidenceScore={stage.confidenceScore || 0}
                   onEdit={() => setIsEditing(!isEditing)}
-                  rules={stage.sourcePreviewTables?.[selectedSourceIndex]?.rules}
+                  rules={rules}
                 />
               </div>
             );

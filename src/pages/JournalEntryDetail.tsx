@@ -18,6 +18,9 @@ import {
   buildWarehouseBusinessRuleCategories,
   loadWarehouseRules,
 } from "../data/ruleSets";
+import { WAREHOUSE_STAGE2 } from "../data/warehouseStage2";
+import { WAREHOUSE_STAGE3 } from "../data/warehouseStage3";
+import { WAREHOUSE_STAGE4, WAREHOUSE_STAGE_COUNT } from "../data/warehouseStage4";
 import { JEHeader } from "../components/journal-entry/JEHeader";
 import { ProgressBar } from "../components/shared/ProgressBar";
 import { StageCard } from "../components/shared/StageCard";
@@ -107,14 +110,22 @@ export const JournalEntryDetail: React.FC = () => {
       : (entry?.stages ?? []);
 
   // Warehouse SOP: Stage 1 shows the Warehouse rules (warehouseDocs/WH_rule_111.xlsx);
-  // all other stages stay the same as the Logistics static flow.
+  // Stage 2 shows the UHPC Week41-43 inputs + C600_005 Plant.xlsx output (warehouseDocs/Data);
+  // Stage 3 shows SAP.xlsx input + Snapshot New.xlsx output, with snapshot.xlsx /
+  // FC Update.xlsx as Reference Files;
+  // Stage 4 "JE Template Generation" shows Trintech.xlsx input + SIRIUS_UL Calc & Post_1.xlsx output.
+  // Warehouse shows only these 4 stages; Logistics keeps all 8 stages.
   const isWarehouseEntry = usesStaticTemplate && uploadedEntry?.lob === "Warehouse";
   const [stages, setStages] = useState<StageData[]>(() =>
-    initialStages.map((stage) =>
-      isWarehouseEntry && stage.id === 1
-        ? { ...stage, businessRuleCategories: [] }
-        : { ...stage },
-    ),
+    initialStages
+      .filter((stage) => !isWarehouseEntry || stage.id <= WAREHOUSE_STAGE_COUNT)
+      .map((stage) => {
+        if (isWarehouseEntry && stage.id === 1) return { ...stage, businessRuleCategories: [] };
+        if (isWarehouseEntry && stage.id === 2) return { ...stage, ...WAREHOUSE_STAGE2 };
+        if (isWarehouseEntry && stage.id === 3) return { ...stage, ...WAREHOUSE_STAGE3 };
+        if (isWarehouseEntry && stage.id === 4) return { ...stage, ...WAREHOUSE_STAGE4 };
+        return { ...stage };
+      }),
   );
 
   useEffect(() => {

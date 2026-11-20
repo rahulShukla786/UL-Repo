@@ -89,19 +89,16 @@ const shortRuleId = (ruleId: string): string => ruleId.split(" - ").pop() ?? rul
 
 // ── Stage 1 "Reading Business Rules" categories for Warehouse ────────────────
 const WAREHOUSE_SOURCE_FILES = [
-  "MEF BNL <YYYY> <Mon-1> MEC_AMB.xlsx (prior-month working file)",
-  "C600 weekly input (UHPC overview weekly figures)",
-  "E001 weekly input (Wedge weekly overview)",
-  "A211 monthly invoice (email / PDF)",
-  "E004 invoice status",
-  "Forecast file (SharePoint)",
+  "UHPC overview weekly figures 2026-Week43.xlsx",
+  "UHPC overview weekly figures 2026-Week42.xlsx",
+  "UHPC overview weekly figures 2026-Week41.xlsx",
+  "SAP.xlsx",
 ];
 
 const WAREHOUSE_REFERENCE_FILES = [
-  "SAP report S_ALR_87013611",
-  "mapping (Cost Centre Mapping)",
-  "cc mapping from copa",
-  "KW %",
+  "Trintech.xlsx",
+  "FC Update.xlsx",
+  "Snapshot.xlsx",
 ];
 
 export const buildWarehouseBusinessRuleCategories = (
