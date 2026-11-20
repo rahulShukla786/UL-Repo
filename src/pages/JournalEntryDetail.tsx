@@ -14,6 +14,10 @@ import {
   ADHOC_STAGE2_SOP_COMPLETED,
 } from "../data/mockData";
 import { useJournalEntries } from "../context/JournalEntriesContext";
+import {
+  buildWarehouseBusinessRuleCategories,
+  loadWarehouseRules,
+} from "../data/ruleSets";
 import { JEHeader } from "../components/journal-entry/JEHeader";
 import { ProgressBar } from "../components/shared/ProgressBar";
 import { StageCard } from "../components/shared/StageCard";
@@ -102,9 +106,35 @@ export const JournalEntryDetail: React.FC = () => {
       ? STATIC_STANDARD_DETAIL_STAGES
       : (entry?.stages ?? []);
 
+  // Warehouse SOP: Stage 1 shows the Warehouse rules (warehouseDocs/WH_rule_111.xlsx);
+  // all other stages stay the same as the Logistics static flow.
+  const isWarehouseEntry = usesStaticTemplate && uploadedEntry?.lob === "Warehouse";
   const [stages, setStages] = useState<StageData[]>(() =>
-    initialStages.map((stage) => ({ ...stage })),
+    initialStages.map((stage) =>
+      isWarehouseEntry && stage.id === 1
+        ? { ...stage, businessRuleCategories: [] }
+        : { ...stage },
+    ),
   );
+
+  useEffect(() => {
+    if (!isWarehouseEntry) return;
+    let cancelled = false;
+    loadWarehouseRules()
+      .then((rules) => {
+        if (cancelled) return;
+        const categories = buildWarehouseBusinessRuleCategories(rules);
+        setStages((prev) =>
+          prev.map((stage) =>
+            stage.id === 1 ? { ...stage, businessRuleCategories: categories } : stage,
+          ),
+        );
+      })
+      .catch((err) => console.error("Failed to load warehouse rules", err));
+    return () => {
+      cancelled = true;
+    };
+  }, [isWarehouseEntry]);
   // Static (uploaded SOP) flow always stays Pending
   const [entryStatus, setEntryStatus] = useState<JEStatus>(
     usesStaticTemplate ? "pending" : (entry?.status ?? "pending"),

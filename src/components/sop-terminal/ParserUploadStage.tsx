@@ -1,7 +1,9 @@
 import React from "react";
 import { Upload, Link2, CheckCircle2, FileText } from "lucide-react";
 import { Button } from "../shared/Button";
+import { Select, SelectItem } from "../shared/Select";
 import { cn } from "../../lib/utils";
+import { SOP_LOBS, isSOPLob, type SOPLob } from "../../data/ruleSets";
 
 export interface UploadedFile {
   name: string;
@@ -141,6 +143,9 @@ interface ParserUploadStageProps {
   isDragOver: boolean;
   repoConnected: boolean;
   isExtracting: boolean;
+  /** SOP type / Line of Business chosen for the uploaded file */
+  lob: SOPLob | null;
+  onLobChange: (lob: SOPLob) => void;
   onBrowse: () => void;
   onDrop: (event: React.DragEvent<HTMLButtonElement>) => void;
   onDragOver: (event: React.DragEvent<HTMLButtonElement>) => void;
@@ -155,6 +160,8 @@ export const ParserUploadStage: React.FC<ParserUploadStageProps> = ({
   isDragOver,
   repoConnected,
   isExtracting,
+  lob,
+  onLobChange,
   onBrowse,
   onDrop,
   onDragOver,
@@ -163,7 +170,7 @@ export const ParserUploadStage: React.FC<ParserUploadStageProps> = ({
   onToggleConnect,
   onExtract,
 }) => {
-  const canExtract = Boolean(uploadedFile) && !isExtracting;
+  const canExtract = Boolean(uploadedFile) && Boolean(lob) && !isExtracting;
 
   return (
     <>
@@ -171,8 +178,8 @@ export const ParserUploadStage: React.FC<ParserUploadStageProps> = ({
         SOP Parser
       </h2>
       <p className="mt-1 max-w-190 text-[13px] text-fiord">
-        Upload a Standard Operating Procedure to review the enabled business
-        rules from the pallet accrual rule set.
+        Upload a Standard Operating Procedure, choose its SOP type (Logistics
+        or Warehouse) and review the enabled business rules of that rule set.
       </p>
 
       <div className="mt-4 grid w-full gap-6 md:grid-cols-2">
@@ -192,7 +199,26 @@ export const ParserUploadStage: React.FC<ParserUploadStageProps> = ({
         />
       </div>
 
-      <div className="mt-3.5 flex justify-end">
+      <div className="mt-3.5 flex flex-wrap items-end justify-end gap-4">
+        <div className="w-56">
+          <label className="mb-1 block text-[12px] font-medium text-gray-700">
+            SOP Type (Line of Business)
+          </label>
+          <Select
+            value={lob ?? "Select"}
+            onValueChange={(value) => {
+              if (isSOPLob(value)) onLobChange(value);
+            }}
+            className="h-9 w-full"
+          >
+            <SelectItem value="Select">Select</SelectItem>
+            {SOP_LOBS.map((item) => (
+              <SelectItem key={item} value={item}>
+                {item}
+              </SelectItem>
+            ))}
+          </Select>
+        </div>
         <Button
           type="button"
           className="h-9 min-w-61 rounded-lg bg-brand px-5 text-[13px] font-medium text-white hover:bg-brand-hover disabled:opacity-45"

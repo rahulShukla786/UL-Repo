@@ -13,7 +13,12 @@ import { Input } from "../shared/Input";
 import { Select, SelectItem } from "../shared/Select";
 import { cn } from "../../lib/utils";
 import type { UploadedFile } from "./ParserUploadStage";
-import { PALLET_ACCRUAL_RULES } from "../../data/palletAccrualRules";
+import {
+  LOGISTICS_RULES,
+  getRulesForLob,
+  type LobRule,
+  type SOPLob,
+} from "../../data/ruleSets";
 import type { SOPRule } from "../../stores/sopStore";
 
 type RuleItem = SOPRule;
@@ -41,27 +46,32 @@ const DragDots: React.FC = () => {
 
 interface ParserRulesStageProps {
   uploadedFile: UploadedFile;
-  onSaveToLibrary?: (fileName: string, rules: SOPRule[]) => void;
+  lob: SOPLob;
+  onSaveToLibrary?: (fileName: string, rules: SOPRule[], lob: SOPLob) => void;
 }
 
-const STEP_ITEMS = [
-  {
-    title: "SOP Received",
-    subtitle: "Uploaded document ready",
-  },
-  {
-    title: "Loading Pallet Rules",
-    subtitle: "Preparing enabled rules for review",
-  },
-  {
-    title: "Pallet Rules Loaded",
-    subtitle: "Rules ordered by execution sequence",
-  },
-  {
-    title: "Ready for Review",
-    subtitle: "Review and update rule statuses",
-  },
-] as const;
+// Enabled rules of the LOB rule set, mapped to the parser row shape
+const toRuleItems = (lobRules: LobRule[]): RuleItem[] =>
+  lobRules
+    .filter((rule) => rule.enabled)
+    .map((rule) => ({
+      id: rule.rule_id,
+      order: rule.order_of_execution,
+      title: rule.title,
+      text: rule.description,
+      type: rule.rule_type,
+      status: "Pending" as const,
+    }));
+
+const getStepItems = (lob: SOPLob) => {
+  const label = lob === "Warehouse" ? "Warehouse" : "Pallet";
+  return [
+    { title: "SOP Received", subtitle: "Uploaded document ready" },
+    { title: `Loading ${label} Rules`, subtitle: "Preparing enabled rules for review" },
+    { title: `${label} Rules Loaded`, subtitle: "Rules ordered by execution sequence" },
+    { title: "Ready for Review", subtitle: "Review and update rule statuses" },
+  ];
+};
 
 const StatusPill: React.FC<{ status: RuleItem["status"] }> = ({ status }) => {
   return (
@@ -104,13 +114,13 @@ const HighlightText: React.FC<{ text: string; query: string }> = ({
   );
 };
 
-const StepProgress: React.FC = () => {
+const StepProgress: React.FC<{ lob: SOPLob }> = ({ lob }) => {
   return (
     <div className="mt-4 border-y border-border-default py-4">
       <div className="relative">
         <div className="absolute left-0 right-0 top-3 h-0.5 bg-completed" />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {STEP_ITEMS.map((step) => (
+          {getStepItems(lob).map((step) => (
             <div key={step.title} className="relative text-center">
               <span className="relative z-10 mx-auto inline-flex h-6 w-6 items-center justify-center rounded-full bg-completed text-white">
                 <Check size={14} />
@@ -129,18 +139,35 @@ const StepProgress: React.FC = () => {
 
 export const ParserRulesStage: React.FC<ParserRulesStageProps> = ({
   uploadedFile,
+  lob,
   onSaveToLibrary,
 }) => {
+  // Logistics rules are bundled; Warehouse rules are read from warehouseDocs/WH_rule_111.xlsx
   const [rules, setRules] = useState<RuleItem[]>(() =>
-    PALLET_ACCRUAL_RULES.filter((rule) => rule.enabled).map((rule) => ({
-      id: rule.rule_id,
-      order: rule.order_of_execution,
-      title: rule.title,
-      text: rule.description,
-      type: rule.rule_type,
-      status: "Pending",
-    })),
+    lob === "Logistics" ? toRuleItems(LOGISTICS_RULES) : [],
   );
+  const [rulesLoading, setRulesLoading] = useState(lob !== "Logistics");
+  const [rulesError, setRulesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (lob === "Logistics") return;
+    let cancelled = false;
+    setRulesLoading(true);
+    setRulesError(null);
+    getRulesForLob(lob)
+      .then((lobRules) => {
+        if (!cancelled) setRules(toRuleItems(lobRules));
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setRulesError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        if (!cancelled) setRulesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [lob]);
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = useState("All");
   const [successToastMessage, setSuccessToastMessage] = useState<string | null>(null);
@@ -308,20 +335,28 @@ export const ParserRulesStage: React.FC<ParserRulesStageProps> = ({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h3 className="text-[16px] font-semibold text-[var(--deep-blue)]">
-            Business Rules ({rules.length} enabled pallet rules)
+            Business Rules (
+            {rulesLoading
+              ? "loading…"
+              : `${rules.length} enabled ${lob === "Warehouse" ? "warehouse" : "pallet"} rules`}
+            )
           </h3>
           <p className="mt-1 text-[13px] text-[var(--bright-black)]">
-            Input: {uploadedFile.name}
+            Input: {uploadedFile.name} · SOP Type: {lob}
           </p>
+          {rulesError ? (
+            <p className="mt-1 text-[12px] text-failed">{rulesError}</p>
+          ) : null}
         </div>
         <Button
           type="button"
-          className="h-9 min-w-61 rounded-lg bg-brand px-5 text-[13px] font-medium text-white hover:bg-brand-hover"
+          className="h-9 min-w-61 rounded-lg bg-brand px-5 text-[13px] font-medium text-white hover:bg-brand-hover disabled:opacity-45"
+          disabled={rulesLoading || rules.length === 0}
           onClick={() => {
             triggerSuccessToast();
             if (onSaveToLibrary) {
               setTimeout(() => {
-                onSaveToLibrary(uploadedFile.name, rules);
+                onSaveToLibrary(uploadedFile.name, rules, lob);
               }, 1200);
             }
           }}
@@ -350,7 +385,7 @@ export const ParserRulesStage: React.FC<ParserRulesStageProps> = ({
         </div>
       ) : null}
 
-      <StepProgress />
+      <StepProgress lob={lob} />
 
       <div className="mt-4 grid gap-3 md:grid-cols-6 md:items-end">
         <div className="md:col-span-5">

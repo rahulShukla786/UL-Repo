@@ -24,6 +24,7 @@ VOLUME_PATH = os.environ.get("UL_APP_FILES_VOLUME", "/Volumes/r2a/journal/ul_app
 # Allow-list of downloadable files: key used in the URL -> file name in the volume
 VOLUME_FILES = {
     "chep-accrual": "October 2026 CHEP Accrual.xlsx",
+    "wh-accruals-sop": "EU_Deliver_WH_Accruals_V5_check2.docx",
 }
 
 CHUNK_SIZE = 1024 * 1024  # 1 MB
