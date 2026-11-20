@@ -32,6 +32,31 @@ const SOURCE_ICON_COLORS: Record<string, string> = {
   UPLOADED: "text-source-uploaded-icon",
 };
 
+// Excel file logo (green sheet with white "X")
+const ExcelLogo: React.FC<{ size?: number; className?: string }> = ({
+  size = 28,
+  className,
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 32 32"
+    className={className}
+    aria-label="Excel"
+  >
+    <rect x="8" y="3" width="21" height="26" rx="2" fill="#21A366" />
+    <rect x="8" y="3" width="21" height="8.7" rx="2" fill="#33C481" />
+    <rect x="8" y="20.3" width="21" height="8.7" rx="2" fill="#185C37" />
+    <rect x="3" y="8" width="15" height="16" rx="2" fill="#107C41" />
+    <path
+      d="M6.6 20.5 9.3 16 6.8 11.5h2.1l1.4 2.9 1.5-2.9h2l-2.5 4.5 2.6 4.5h-2.1l-1.5-3-1.6 3z"
+      fill="#fff"
+    />
+  </svg>
+);
+
+const isExcelFile = (name: string) => /\.(xlsx|xls|csv|excel)$/i.test(name);
+
 const SourceCard: React.FC<{
   source: SourceFile;
   isSelected: boolean;
@@ -85,6 +110,8 @@ const SourceCard: React.FC<{
       <div className="flex items-center gap-2">
         {isSAP ? (
           <SAPLogo size={28} className="flex-shrink-0" />
+        ) : isExcelFile(source.name) ? (
+          <ExcelLogo size={28} className="flex-shrink-0" />
         ) : isSharedDrive ? (
           <img
             src={sharedDriveIcon}
@@ -227,12 +254,35 @@ export const DataExtraction: React.FC<DataExtractionProps> = ({
                   extractedCount={fields.length}
                   confidenceScore={stage.confidenceScore || 0}
                   onEdit={() => setIsEditing(!isEditing)}
+                  rules={stage.sourcePreviewTables?.[selectedSourceIndex]?.rules}
                 />
               </div>
             );
           })()}
         </div>
       )}
+
+      {/* Output Preview — full width, no Rule Summary panel */}
+      {stage.outputPreviewTable && (
+        <div className="w-full">
+          <DocumentPreview
+            title="OUTPUT PREVIEW"
+            fileName={stage.outputPreviewTable.fileName}
+            sourcePreviewTable={stage.outputPreviewTable}
+          />
+        </div>
+      )}
+
+      {/* Multiple Output Previews — one full-width preview per output file */}
+      {stage.outputPreviewTables?.map((table) => (
+        <div key={table.fileName} className="w-full">
+          <DocumentPreview
+            title="OUTPUT PREVIEW"
+            fileName={table.fileName}
+            sourcePreviewTable={table}
+          />
+        </div>
+      ))}
 
       {/* Exception Panel */}
       {hasException && stage.exceptionType && (

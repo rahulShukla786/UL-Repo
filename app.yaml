@@ -1,0 +1,8 @@
+command:
+  - python
+  - app.py
+
+env:
+  # Unity Catalog volume holding large files (>50 MB) that cannot be in the app source
+  - name: UL_APP_FILES_VOLUME
+    value: /Volumes/r2a/journal/ul_app_files

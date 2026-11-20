@@ -3,8 +3,6 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   FileText,
-  ListChecks,
-  AlertTriangle,
   BookOpen,
   ChevronLeft,
   ChevronRight,
@@ -21,8 +19,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
   { label: "Journal Entry", icon: FileText, to: "/journal-entry" },
-  { label: "Work List", icon: ListChecks, to: "/work-list" },
-  { label: "Exception", icon: AlertTriangle, to: "/exception" },
+  // Work List and Exception tabs hidden from navigation
   { label: "SOP Terminal", icon: BookOpen, to: "/sop-terminal" },
 ];
 

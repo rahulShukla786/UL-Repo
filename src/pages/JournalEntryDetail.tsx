@@ -27,6 +27,8 @@ import { DataExtraction } from "../components/journal-entry/stages/DataExtractio
 import { DataValidation } from "../components/journal-entry/stages/DataValidation";
 import { JETemplate } from "../components/journal-entry/stages/JETemplate";
 import { UploadERP } from "../components/journal-entry/stages/UploadERP";
+import { EmailDetails } from "../components/journal-entry/stages/EmailDetails";
+import { DocumentPreview } from "../components/journal-entry/DocumentPreview";
 import type { StageData, JEStatus } from "../types";
 
 interface StageContentProps {
@@ -61,9 +63,28 @@ const StageContent: React.FC<StageContentProps> = ({
     case "data_validation":
       return <DataValidation stage={stage} />;
     case "je_template":
-      return <JETemplate stage={stage} onStageComplete={onStageComplete} />;
+      return (
+        <>
+          {/* Optional file previews (e.g. final_blackline.xlsx) with Download button */}
+          {stage.outputPreviewTables?.map((table) => (
+            <div key={table.fileName} className="w-full mb-4">
+              <DocumentPreview
+                title="OUTPUT PREVIEW"
+                fileName={table.fileName}
+                sourcePreviewTable={table}
+              />
+            </div>
+          ))}
+          {/* When file previews are provided, show only them (no JE table / approval workflow) */}
+          {!stage.outputPreviewTables?.length && (
+            <JETemplate stage={stage} onStageComplete={onStageComplete} />
+          )}
+        </>
+      );
     case "upload_erp":
       return <UploadERP stage={stage} onStageComplete={onStageComplete} />;
+    case "email_details":
+      return <EmailDetails stage={stage} />;
     default:
       return null;
   }
@@ -84,13 +105,19 @@ export const JournalEntryDetail: React.FC = () => {
   const [stages, setStages] = useState<StageData[]>(() =>
     initialStages.map((stage) => ({ ...stage })),
   );
+  // Static (uploaded SOP) flow always stays Pending
   const [entryStatus, setEntryStatus] = useState<JEStatus>(
-    entry?.status ?? "pending",
+    usesStaticTemplate ? "pending" : (entry?.status ?? "pending"),
   );
-  const [progress, setProgress] = useState(entry?.progress ?? 0);
+  // Static step-through flow: progress starts at 20% and each clicked stage turns green
+  const STATIC_BASE_PROGRESS = 20;
+  const [staticDoneCount, setStaticDoneCount] = useState(0);
+  const [progress, setProgress] = useState(
+    usesStaticTemplate ? STATIC_BASE_PROGRESS : (entry?.progress ?? 0),
+  );
   const [isProcessing, setIsProcessing] = useState(false);
   const [expandedStageId, setExpandedStageId] = useState<number | null>(() => {
-    if (usesStaticTemplate) return 4;
+    if (usesStaticTemplate) return null; // stages open as the user clicks through them
 
     const stageToExpand = stages.find(
       (stage) =>
@@ -179,9 +206,10 @@ export const JournalEntryDetail: React.FC = () => {
         const stage = updated[stageIndex];
 
         if (stage.componentType === "je_template") {
+          // Keep current id/title so renumbered flows (e.g. Stage 5) stay correct
           updated[stageIndex] = stage.gitJEPostingData
-            ? { ...GIT_STAGE4_APPROVED }
-            : { ...STD_STAGE4_APPROVED };
+            ? { ...GIT_STAGE4_APPROVED, id: stage.id, title: stage.title, outputPreviewTables: stage.outputPreviewTables }
+            : { ...STD_STAGE4_APPROVED, id: stage.id, title: stage.title, outputPreviewTables: stage.outputPreviewTables };
         } else {
           updated[stageIndex] = { ...stage, status: "completed" };
         }
@@ -286,6 +314,38 @@ export const JournalEntryDetail: React.FC = () => {
     [entry],
   );
 
+  // Static flow: clicking the next stage marks it completed (green) and advances progress
+  const handleStaticStageClick = useCallback(
+    (stageId: number) => {
+      const idx = stages.findIndex((s) => s.id === stageId);
+      if (idx === -1 || idx !== staticDoneCount) return;
+      const done = idx + 1;
+      setStaticDoneCount(done);
+      setProgress(
+        Math.round(
+          STATIC_BASE_PROGRESS +
+            (done / stages.length) * (100 - STATIC_BASE_PROGRESS),
+        ),
+      );
+      setExpandedStageId(stageId);
+    },
+    [stages, staticDoneCount],
+  );
+
+  const displayStages: StageData[] = usesStaticTemplate
+    ? stages.map((s, i) => ({
+        ...s,
+        status:
+          i < staticDoneCount
+            ? "completed"
+            : i === staticDoneCount
+              ? "in_progress"
+              : "pending",
+      }))
+    : stages;
+  const staticAllDone =
+    usesStaticTemplate && staticDoneCount === stages.length;
+
   if (!entry) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -325,7 +385,7 @@ export const JournalEntryDetail: React.FC = () => {
             />
           </div>
           <div className="space-y-3">
-            {stages.map((stage, idx) => {
+            {displayStages.map((stage, idx) => {
               // hasIntermediateData covers standard stdJEPostingData, ad-hoc adHocJEPostingData,
               // journalLines fallback, and uploadBatchId — so Stage 4/6 content shows correctly
               const hasIntermediateData = stageHasContent(stage);
@@ -339,9 +399,11 @@ export const JournalEntryDetail: React.FC = () => {
                   ? hasContent && !!(stage.intentDetails || stage.exceptionType)
                   : hasContent;
 
-              const allPriorCompleted = stages
+              const allPriorCompleted = displayStages
                 .slice(0, idx)
                 .every((s) => s.status === "completed");
+              const isNextStaticStage =
+                usesStaticTemplate && idx === staticDoneCount;
 
               return (
                 <StageCard
@@ -350,8 +412,15 @@ export const JournalEntryDetail: React.FC = () => {
                   isExpanded={expandedStageId === stage.id}
                   onToggleExpand={handleToggleExpand}
                   onStageClick={
-                    allPriorCompleted ? handleStageClick : undefined
+                    usesStaticTemplate
+                      ? isNextStaticStage
+                        ? handleStaticStageClick
+                        : undefined
+                      : allPriorCompleted
+                        ? handleStageClick
+                        : undefined
                   }
+                  forceClickable={isNextStaticStage}
                 >
                   {showContent ? (
                     <StageContent
@@ -384,7 +453,13 @@ export const JournalEntryDetail: React.FC = () => {
                 ? STATIC_STANDARD_DETAIL_LOGS
                 : entry.aiProcessingLog
             }
-            status={usesStaticTemplate ? "completed" : entryStatus}
+            status={
+              usesStaticTemplate
+                ? staticAllDone
+                  ? "completed"
+                  : "pending"
+                : entryStatus
+            }
           />
         </div>
       </div>

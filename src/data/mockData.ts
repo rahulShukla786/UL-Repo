@@ -2,6 +2,46 @@ import type { JournalEntry, StageData, ExtractedField, SourcePreviewTable, GitJE
 import adHocRaw from "./ad-hoc.json";
 import gitStage2Raw from "./git-stage2-data.json";
 import gitStage4Raw from "./git-stage4-data.json";
+import { PALLET_ACCRUAL_RULES } from "./palletAccrualRules";
+import {
+  CHEP_ACCRUAL_TOTAL_RECORDS,
+  CHEP_ACCRUAL_UNIQUE_PLANTS,
+  CHEP_ACCRUAL_COUNTRIES,
+  CHEP_ACCRUAL_TOTAL_COST,
+  CHEP_ACCRUAL_COLUMNS,
+  CHEP_ACCRUAL_ROWS,
+  SUMMARY_COLUMNS,
+  SUMMARY_WITHOUT_COPACK_ROWS,
+  SUMMARY_DACH_PL_ROWS,
+} from "./stage3DataProcessing2";
+import {
+  BM_INPUT_OCTOBER_TOTAL_RECORDS,
+  ACCR_ESTIMATE_TOTAL_RECORDS,
+  BM_INPUT_OCTOBER_COLUMNS,
+  BM_INPUT_OCTOBER_ROWS,
+  ACCR_ESTIMATE_INPUT_COLUMNS,
+  ACCR_ESTIMATE_INPUT_ROWS,
+  ACCR_ESTIMATE_OUTPUT_COLUMNS,
+  ACCR_ESTIMATE_OUTPUT_ROWS,
+  OCTOBER_MONTH_BL_COLUMNS,
+  OCTOBER_MONTH_BL_ROWS,
+} from "./stage5DataProcessing4";
+import {
+  REACCRUAL_INPUT_TOTAL_RECORDS,
+  REACCRUAL_INPUT_COLUMNS,
+  REACCRUAL_INPUT_ROWS,
+  SUMMARY_COLUMNS_STAGE7,
+  SUMMARY_ROWS_STAGE7,
+  FINAL_SUMMARY_COLUMNS,
+  FINAL_SUMMARY_ROWS,
+} from "./stage7DataProcessing6";
+import { FINAL_BLACKLINE_COLUMNS, FINAL_BLACKLINE_ROWS } from "./stage8JETemplate";
+import {
+  RULES_116_SOURCING,
+  RULES_116_VALIDATION,
+  RULES_116_CALCULATION,
+  rules116ById,
+} from "./rules116";
 
 // ── Standard business rule categories ────────────────────────────────────────
 export const STD_BUSINESS_RULE_CATEGORIES = [
@@ -53,68 +93,44 @@ export const STD_BUSINESS_RULE_CATEGORIES = [
     ],
   },
 ];
-// ── Goods in Transit JE — business rule categories ───────────────────────────
+// ── Pallet Accrual JE — business rule categories (116 rules grouped by Rule Type) ──
+
 const GIT_BUSINESS_RULE_CATEGORIES = [
   {
     title: "Source File Requirements",
     status: "completed" as const,
     items: [
-      "YUMM_PUR0058 Import Tracker Report.",
-      "YUMM_PUR0041 PO List.",
-      "SAP ME23N transaction.",
-      "GRIR Review Report.",
-      "PLB Report.",
-      "Material List Master File."
+      "B&M input.xlsx",
+      "SAP data.xlsx",
+      "SAP opening-balance.xlsx",
+      "October 2026 CHEP Accrual.xlsx",
+      "Outstanding Credit Debit Reports 2026.xlsx",
+    ],
+    // Shown on the right side of the Source File Requirements box
+    referenceFiles: [
+      "Masterdata.xlsx",
+      "split.xlsx",
+      "other than split.xlsx",
+      "calender mapping.xlsx",
+      "Masterdata Data copack.xlsx",
+      "POref.xlsx",
     ],
   },
   {
-    title: "Processing Rules",
+    // From Rules/All_116_Rules_File_Check_Results.xlsx, grouped by Rule Type
+    title: "Source Rules",
     status: "completed" as const,
-    items: [
-      "Include only EXW, FCA and FOB Incoterms.",
-      "Exclude Unilever sister companies and consignment vendors.",
-      "Exclude shipments marked as DELIVERED.",
-      "Include Import Tracker records with ETA within the GIT eligibility window.",
-      "Calculate Qty Need to be Delivered as Qty minus GR Qty.",
-      "Include only records with Qty Need to be Delivered greater than zero.",
-      "Exclude records with Total Goods Movement Status equal to C (Completed).",
-      "Convert eligible transaction values to IDR using applicable exchange rates.",
-      "Include PLB records with non-consignment vendors and valid Incoterms.",
-      "Exclude damaged materials and invalid PLB locations.",
-      "Perform BNG, Import Tracker and Movement Indicator validation checks.",
-      "Combine eligible Import Tracker and PLB populations to determine the final GIT value.",
-    ],
+    items: RULES_116_SOURCING,
   },
   {
     title: "Validation Rules",
     status: "completed" as const,
-    items: [
-      "Incoterms validated for all eligible purchase orders.",
-      "Missing Incoterm validated through PO List or SAP ME23N.",
-      "Duplicate purchase orders removed from lookup populations.",
-      "BNG check completed against GRIR Review report.",
-      "Import Tracker cross-check completed for PLB records.",
-      "Movement Indicator validated against MB51 status.",
-      "Material Type mapping completed using Material List.",
-      "Journal amount agrees with GIT Summary."
-    ],
+    items: RULES_116_VALIDATION,
   },
   {
-    title: "Exception Rules",
+    title: "Calculation Rules",
     status: "completed" as const,
-    items: [
-      "Missing Incoterm \u2192 Validate through PO List or SAP ME23N.",
-      "Qty Need to be Delivered = 0 \u2192 Exclude.",
-      "Total Goods Movement Status = C \u2192 Exclude.",
-      "Delivered shipment status \u2192 Exclude.",
-      "Consignment vendor record \u2192 Exclude.",
-      "Unilever sister company vendor \u2192 Exclude.",
-      "Material Status = Damaged \u2192 Exclude.",
-      "Location = OF Cakung \u2192 Exclude.",
-      "PO already booked in BNG \u2192 Exclude.",
-      "Movement Indicator = C \u2192 Exclude.",
-      "Import Tracker duplicate population \u2192 Exclude.",
-    ],
+    items: RULES_116_CALCULATION,
   },
 ];
 
@@ -388,79 +404,390 @@ export const GIT_STAGE1_COMPLETED: StageData = {
   businessRuleCategories: STD_BUSINESS_RULE_CATEGORIES,
 };
 
-// Stage 2 — two SHAREDRIVE sources with per-source preview tables
+// ── Stage 2 "Data Processing 1" — PLACEHOLDER data for B&M / SAP inputs ─────
+// NOTE: rows below are placeholder values until the real files are provided.
+const palletRulesById = (ids: string[]): string[] =>
+  ids
+    .map((id) =>
+      PALLET_ACCRUAL_RULES.find((rule) => rule.rule_id.endsWith(` - ${id}`)),
+    )
+    .filter((rule): rule is (typeof PALLET_ACCRUAL_RULES)[number] => !!rule)
+    .map((rule) => `${rule.rule_id.split(" - ").pop()}: ${rule.title}`);
+
+const PLACEHOLDER_PLANTS = [
+  ["DE01", "Germany", "Heppenheim"],
+  ["DE02", "Germany", "Buxtehude"],
+  ["PL01", "Poland", "Katowice"],
+  ["PL02", "Poland", "Bydgoszcz"],
+  ["AT01", "Austria", "Vienna"],
+  ["CH01", "Switzerland", "Thayngen"],
+  ["NL01", "Netherlands", "Rotterdam"],
+  ["BE01", "Belgium", "Brussels"],
+  ["FR01", "France", "Le Meux"],
+  ["IT01", "Italy", "Sanguinetto"],
+  ["ES01", "Spain", "Leioa"],
+  ["UK01", "United Kingdom", "Port Sunlight"],
+];
+
+const fmtEUR = (n: number) =>
+  n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const BM_INPUT_ROWS: string[][] = PLACEHOLDER_PLANTS.map(([plant, country, name], i) => [
+  country,
+  plant,
+  i % 3 === 0 ? "Copack" : "Own Plant",
+  name,
+  "May",
+  "2026",
+  fmtEUR(12000 + i * 1850.5),
+  "EUR",
+]);
+
+const SAP_DATA_ROWS: string[][] = PLACEHOLDER_PLANTS.map(([plant], i) => [
+  `51${String(1000 + i * 7)}`,
+  `CC${plant}PAL`,
+  "6140210",
+  "31.05.2026",
+  `CHEP INV ${plant} MAY26`,
+  fmtEUR(10500 + i * 1620.25),
+  "EUR",
+  plant,
+]);
+
+const REACCRUAL_ROWS: string[][] = PLACEHOLDER_PLANTS.map(([plant, country], i) => {
+  const toBeInvoiced = 12000 + i * 1850.5;
+  const sapInvoiced = 10500 + i * 1620.25;
+  const opening = 2500 + i * 310;
+  const reaccrual = toBeInvoiced - sapInvoiced;
+  return [
+    plant,
+    country,
+    fmtEUR(opening),
+    fmtEUR(toBeInvoiced),
+    fmtEUR(sapInvoiced),
+    fmtEUR(reaccrual),
+    fmtEUR(opening + reaccrual),
+  ];
+});
+
+const sumCol = (rows: string[][], col: number) =>
+  rows.reduce((s, r) => s + Number(r[col].replace(/,/g, "")), 0);
+
 export const STD_STAGE2_COMPLETED: StageData = {
   id: 2,
-  title: "Stage 2: Data Extraction",
+  title: "Stage 2: Data Processing 1",
   purpose: "Pull transactional/aggregated data",
   status: "completed",
   componentType: "data_extraction",
-  extractedCount: 3,
-  totalRecords: 123,
+  extractedCount: 2,
+  totalRecords: BM_INPUT_ROWS.length + SAP_DATA_ROWS.length,
   sources: [
     {
-      type: "SAP",
-      name: "YMM234 Open DO Report.xlsx",
+      type: "SHAREDRIVE",
+      name: "B&M Input.xlsx",
       date: "17 Jun 2026",
       status: "success",
     },
     {
       type: "SHAREDRIVE",
-      name: "Consolidated Open DO Report.xlsx",
-      date: "17 Jun 2026",
-      status: "success",
-    },
-    {
-      type: "SHAREDRIVE",
-      name: "XE Currency Rates.xlsx",
+      name: "SAP Data 1.xlsx",
       date: "17 Jun 2026",
       status: "success",
     },
   ],
   confidenceScore: 90,
-  extractedFields: [
-    { label: "Total Number of POs", value: "5" },
-    { label: "Total Pending PO Quantity", value: "190" },
-    { label: "Highest Basic Price", value: "\u20b9500,000 (PO100001)" },
-    { label: "Unique Cost Centers", value: "5" },
-    { label: "Highest Pending PO Quantity", value: "100 (PO100001)" },
-  ],
   sourcePreviewTables: [
     {
-      fileName: "YMM234 Open DO Report.xlsx",
-      columns: ["Document Date", "PO Number", "Purchasing Doc Type", "Cost Center", "WBS Element"],
-      rows: [
-        ["30 June 2026", "PO100001", "ZPAR", "CC10001", "WBS001"],
-        ["30 June 2026", "PO100001", "ZARS", "CC10002", "WBS002"],
-        ["30 June 2026", "PO100001", "ZCIM", "CC10003", "WBS003"],
-        ["30 June 2026", "PO100001", "ZCDO", "CC10004", "WBS004"],
-        ["30 June 2026", "PO100001", "ZAIS", "CC10005", "WBS005"],
+      fileName: "B&M Input.xlsx",
+      filePath: "/data/Stage 2 Data Extraction/B&M Input.xlsx",
+      columns: ["Country", "Plant Code", "Category", "Plant Name", "Month", "Year", "Total Cost", "Currency"],
+      rows: BM_INPUT_ROWS,
+      extractedFields: [
+        { label: "Total Records", value: String(BM_INPUT_ROWS.length) },
+        { label: "Unique Plants", value: String(new Set(BM_INPUT_ROWS.map((r) => r[1])).size) },
+        { label: "Accrual Period", value: "May 2026" },
+        { label: "Total Cost", value: `\u20ac${fmtEUR(sumCol(BM_INPUT_ROWS, 6))}` },
       ],
+      rules: palletRulesById(["R001", "R004", "R008", "R012", "R015"]),
     },
     {
-      fileName: "Consolidated Open DO Report.xlsx",
-      columns: ["PO Number", "Vendor Name", "Material Group", "Pending Qty", "Basic Price", "Currency"],
-      rows: [
-        ["PO100001", "HUL Supplier A", "Raw Materials", "100", "500,000", "INR"],
-        ["PO100002", "HUL Supplier B", "Packaging", "45", "220,000", "INR"],
-        ["PO100003", "HUL Supplier C", "Chemicals", "25", "180,000", "INR"],
-        ["PO100004", "HUL Supplier D", "Consumables", "10", "75,000", "INR"],
-        ["PO100005", "HUL Supplier E", "Services", "10", "150,000", "USD"],
+      fileName: "SAP Data 1.xlsx",
+      filePath: "/data/Stage 2 Data Extraction/SAP Data 1.xlsx",
+      columns: ["Document No", "Cost Center", "GL Account", "Posting Date", "Header Text", "Amount", "Currency", "Plant"],
+      rows: SAP_DATA_ROWS,
+      extractedFields: [
+        { label: "Total Records", value: String(SAP_DATA_ROWS.length) },
+        { label: "Unique Cost Centers", value: String(new Set(SAP_DATA_ROWS.map((r) => r[1])).size) },
+        { label: "Posting Period", value: "May 2026" },
+        { label: "Total SAP Invoiced", value: `\u20ac${fmtEUR(sumCol(SAP_DATA_ROWS, 5))}` },
       ],
+      // Rules/SAP_Data_to_SAP_Data_with_CHEP_stage1.xlsx
+      rules: rules116ById(["R002", "R017", "R022", "R023", "R024", "R025", "R026", "R036", "R018"]),
+    },
+  ],
+  outputPreviewTable: {
+    fileName: "Summary for Reaccrual.xlsx",
+    filePath: "/data/Stage 2 Data Extraction/Summary for Reaccrual.xlsx",
+    columns: ["Plant", "Country", "Opening Balance", "To Be Invoiced", "SAP Invoiced", "Monthly Re-Accrual", "Final Result"],
+    rows: REACCRUAL_ROWS,
+    rules: palletRulesById(["R024", "R039", "R040", "R041"]),
+  },
+};
+
+// ── Stage 3 "Data Processing 2" — copy of Stage 2 layout for CHEP Accrual input ──
+// Preview shows the first 5 records of each file (see stage3DataProcessing2.ts).
+export const STD_STAGE3_DATA_PROCESSING2_COMPLETED: StageData = {
+  id: 3,
+  title: "Stage 3: Data Processing 2",
+  purpose: "Process CHEP accrual data and build plant summaries",
+  status: "completed",
+  componentType: "data_extraction",
+  extractedCount: 1,
+  totalRecords: CHEP_ACCRUAL_TOTAL_RECORDS,
+  sources: [
+    {
+      type: "SHAREDRIVE",
+      name: "October 2026 CHEP Accrual.xlsx",
+      date: "19 Nov 2026",
+      status: "success",
+    },
+  ],
+  confidenceScore: 90,
+  sourcePreviewTables: [
+    {
+      fileName: "October 2026 CHEP Accrual.xlsx",
+      filePath: "/data/Stage 3 Data Processing 2/October 2026 CHEP Accrual.xlsx",
+      // Full 66 MB file lives in UC volume /Volumes/r2a/journal/ul_app_files (served by app.py)
+      downloadUrl: "/api/files/chep-accrual",
+      columns: CHEP_ACCRUAL_COLUMNS,
+      rows: CHEP_ACCRUAL_ROWS,
+      extractedFields: [
+        { label: "Total Records", value: CHEP_ACCRUAL_TOTAL_RECORDS.toLocaleString("en-GB") },
+        { label: "Unique Plants", value: String(CHEP_ACCRUAL_UNIQUE_PLANTS) },
+        { label: "Countries", value: String(CHEP_ACCRUAL_COUNTRIES) },
+        { label: "Accrual Period", value: "October 2026" },
+        { label: "Total Cost", value: `\u20ac${CHEP_ACCRUAL_TOTAL_COST}` },
+      ],
+      // Rules/Stage_2.xlsx (processes 1–4)
+      rules: rules116ById(["R004", "R016", "R008", "R033", "R019", "R034", "R035", "R038", "R039"]),
+    },
+  ],
+  outputPreviewTables: [
+    {
+      fileName: "Summary by Plant without Copack.xlsx",
+      filePath: "/data/Stage 3 Data Processing 2/Summary by Plant without Copack.xlsx",
+      columns: SUMMARY_COLUMNS,
+      rows: SUMMARY_WITHOUT_COPACK_ROWS,
+      rules: rules116ById(["R034"]),
     },
     {
-      fileName: "XE Currency Rates.xlsx",
-      columns: ["Currency Pair", "Rate", "Effective Date", "Source"],
-      rows: [
-        ["USD/INR", "83.45", "30 Jun 2026", "XE.com"],
-        ["EUR/INR", "90.12", "30 Jun 2026", "XE.com"],
-        ["GBP/INR", "105.78", "30 Jun 2026", "XE.com"],
-        ["JPY/INR", "0.53", "30 Jun 2026", "XE.com"],
-        ["AUD/INR", "55.20", "30 Jun 2026", "XE.com"],
-      ],
+      fileName: "Summary by Plant DACH PL.xlsx",
+      filePath: "/data/Stage 3 Data Processing 2/Summary by Plant DACH PL.xlsx",
+      columns: SUMMARY_COLUMNS,
+      rows: SUMMARY_DACH_PL_ROWS,
+      rules: rules116ById(["R035"]),
     },
   ],
 };
+
+// ── Stage 4 "Data Processing 3" — B&M Outstanding Credit / Debit Report email ──
+export const STD_STAGE4_DATA_PROCESSING3_COMPLETED: StageData = {
+  id: 4,
+  title: "Stage 4: Data Processing 3",
+  purpose: "Read B&M Outstanding Credit / Debit Report email",
+  status: "completed",
+  componentType: "email_details",
+  confidenceScore: 95,
+  extractedFields: [
+    { label: "Sender", value: "Tim Bell (B&M Associates)" },
+    { label: "Report", value: "October 2026 accrual report" },
+    { label: "Data Cut-off", value: "25/10/2026" },
+    { label: "Attachment", value: "Outstanding Credit Debit Reports 2026.xlsx" },
+    { label: "Location", value: "Uploaded to Teams channel" },
+  ],
+  emailDetails: {
+    subject: "[External] - FW: Outstanding Credit / Debit Report",
+    receivedAt: "25 Oct 2026",
+    from: { name: "Tim Bell", email: "Tim@bmpallets.com" },
+    to: ["Huras, Mateusz", "varghese, lijo", "Mercy, Felicia"],
+    cc: ["Shaun Sawyer"],
+    attachments: [
+      { name: "Outstanding Credit Debit Reports 2026.xlsx", type: ".xlsx File" },
+    ],
+    body: [
+      "Hi Mateusz",
+      "Octobers accrual report has been uploaded to the Teams channel.",
+      "Data goes up to and including 25/10/2026.",
+      "Kind Regards",
+    ],
+    signature: {
+      name: "Tim Bell",
+      title: "Director",
+      work: "+44 (0) 1664 503612",
+      mobile: "+44 (0) 7879 330231",
+      company: "B&M Associates",
+      address: "Pera Innovation Park",
+    },
+    rules: palletRulesById(["R005"]),
+  },
+};
+
+// ── Stage 5 "Data Processing 4" — copy of Stage 2 layout: B&M input + ACCR estimate ──
+// Each preview holds 5 columns × 5 rows; every table has a Download button.
+export const STD_STAGE5_DATA_PROCESSING4_COMPLETED: StageData = {
+  id: 5,
+  title: "Stage 5: Data Processing 4",
+  purpose: "Build ACCR estimate from B&M October input",
+  status: "completed",
+  componentType: "data_extraction",
+  extractedCount: 2,
+  totalRecords: BM_INPUT_OCTOBER_TOTAL_RECORDS + ACCR_ESTIMATE_TOTAL_RECORDS,
+  sources: [
+    { type: "SHAREDRIVE", name: "B&M_input_october.xlsx", date: "19 Nov 2026", status: "success" },
+    { type: "SHAREDRIVE", name: "ACCR_estimate.xlsx", date: "19 Nov 2026", status: "success" },
+  ],
+  confidenceScore: 92,
+  sourcePreviewTables: [
+    {
+      fileName: "B&M_input_october.xlsx",
+      columns: BM_INPUT_OCTOBER_COLUMNS,
+      rows: BM_INPUT_OCTOBER_ROWS,
+      extractedFields: [
+        { label: "Total Records", value: String(BM_INPUT_OCTOBER_TOTAL_RECORDS) },
+        { label: "Accrual Period", value: "October 2026" },
+        { label: "Key Columns", value: "Country, Category, Plant Code, Sum of Cost" },
+      ],
+      // Rules/Stage_3.xlsx — B$M_input_october.xlsx
+      rules: rules116ById(["R039", "R040", "R041", "R043", "R042", "R044", "R045", "R046", "R062", "R063"]),
+    },
+    {
+      fileName: "ACCR_estimate.xlsx",
+      columns: ACCR_ESTIMATE_INPUT_COLUMNS,
+      rows: ACCR_ESTIMATE_INPUT_ROWS,
+      extractedFields: [
+        { label: "Total Plants", value: String(ACCR_ESTIMATE_TOTAL_RECORDS) },
+        { label: "GL Account", value: "41612001" },
+        { label: "Key Columns", value: "Country, Final Plant, Plant type, cc" },
+      ],
+      // Rules/Stage_3.xlsx — ACCR_estimate.xlsx
+      rules: rules116ById(["R068", "R069", "R070", "R071", "R072", "R073"]),
+    },
+  ],
+  outputPreviewTables: [
+    {
+      fileName: "ACCR_estimate.xlsx",
+      columns: ACCR_ESTIMATE_OUTPUT_COLUMNS,
+      rows: ACCR_ESTIMATE_OUTPUT_ROWS,
+      // Rules/Stage_3.xlsx — ACCR_estimate_output (1).xlsx
+      rules: rules116ById(["R074", "R075", "R064", "R065", "R066", "R076", "R077", "R078", "R111", "R048", "R049", "R050"]),
+    },
+    {
+      fileName: "october_month_BL.xlsx",
+      columns: OCTOBER_MONTH_BL_COLUMNS,
+      rows: OCTOBER_MONTH_BL_ROWS,
+      // Rules/Stage_3.xlsx — october_month_BL.xlsx
+      rules: rules116ById(["R103", "R105", "R112", "R079", "R080", "R081", "R082", "R083", "R084", "R106", "R115", "R052", "R053", "R055", "R107"]),
+    },
+  ],
+};
+
+// ── Stage 6 "Data Processing 5" — SUDC Pallet Accrual Oct'26 instructions email ──
+export const STD_STAGE6_DATA_PROCESSING5_COMPLETED: StageData = {
+  id: 6,
+  title: "Stage 6: Data Processing 5",
+  purpose: "Read SUDC Pallet Accrual Oct'26 instructions email",
+  status: "completed",
+  componentType: "email_details",
+  emailDetails: {
+    subject: "RE: [External] - RE: SUDC Pallet Accrual Oct'26",
+    receivedAt: "29 Oct 2026",
+    sentAt: "Thu 29/10/2026 17:58",
+    from: { name: "Huras, Mateusz", email: "mateusz.huras@unilever.com" },
+    to: ["Deshpande, Rahul"],
+    cc: [
+      "Szyszka, Michal",
+      "FranikGrzebinoga, Dominika",
+      "Gupta, Lovey",
+      "Zia G, Tanzeem",
+      "Mercy, Felicia",
+    ],
+    infoNote: "You replied to this message on 30/10/2026 11:04.",
+    attachments: [
+      { name: "BM Pallets spend 2026 AMB + IC_1.xlsx", type: ".xlsx File", size: "37 KB" },
+    ],
+    body: [],
+    bodyPoints: [
+      "Please use 3 days approach",
+      "Please keep re-accrual only for following countries: ES, BE, CZ, HU",
+      "Please raise credit accrual for Promo repack Cross Charge to MSO - 323,161.36 EUR in Total.",
+    ],
+    bodyTable: {
+      title: "GL 31931001",
+      rows: [
+        ["1047433799", "(14,882.55)"],
+        ["1047533799", "(14,485.01)"],
+        ["1064433799", "(49,662.49)"],
+        ["1064533799", "(331.45)"],
+        ["1095533799", "(42,260.75)"],
+      ],
+    },
+  },
+};
+
+// ── Stage 7 "Data Processing 6" — copy of Stage 2 layout: re-accrual input → summaries ──
+// Each preview holds 5 rows (populated columns); every table has a Download button.
+export const STD_STAGE7_DATA_PROCESSING6_COMPLETED: StageData = {
+  id: 7,
+  title: "Stage 7: Data Processing 6",
+  purpose: "Calculate re-accrual and build final summary",
+  status: "completed",
+  componentType: "data_extraction",
+  extractedCount: 1,
+  totalRecords: REACCRUAL_INPUT_TOTAL_RECORDS,
+  sources: [
+    { type: "SHAREDRIVE", name: "Reaccrual_input.xlsx", date: "19 Nov 2026", status: "success" },
+  ],
+  confidenceScore: 92,
+  sourcePreviewTables: [
+    {
+      fileName: "Reaccrual_input.xlsx",
+      columns: REACCRUAL_INPUT_COLUMNS,
+      rows: REACCRUAL_INPUT_ROWS,
+      extractedFields: [
+        { label: "Total Plants", value: String(REACCRUAL_INPUT_TOTAL_RECORDS) },
+        { label: "Re-Accrual Month", value: "September 2026" },
+        { label: "Re-Accrual Total", value: "\u20ac207,189.48" },
+      ],
+      // Rules/Process 6 1.xlsx — all rules mentioned in the file (in file order):
+      // Reaccrual_input, Final_summary, split, other than split, Summary, final_blackline
+      rules: rules116ById([
+        "R037", "R029", "R030", "R031",
+        "R086", "R087", "R113", "R088", "R089",
+        "R098", "R099", "R100", "R095", "R096", "R097",
+        "R102", "R101",
+        "R090", "R091", "R092", "R093", "R094",
+        "R103", "R112", "R105", "R106", "R052", "R055", "R104", "R054", "R115", "R107",
+      ]),
+    },
+  ],
+  outputPreviewTables: [
+    {
+      fileName: "Summary.xlsx",
+      columns: SUMMARY_COLUMNS_STAGE7,
+      rows: SUMMARY_ROWS_STAGE7,
+      // Rules/Process 6 1.xlsx — Summary.xlsx
+      rules: rules116ById(["R090", "R091", "R092", "R093", "R094"]),
+    },
+    {
+      fileName: "Final_summary.xlsx",
+      columns: FINAL_SUMMARY_COLUMNS,
+      rows: FINAL_SUMMARY_ROWS,
+      // Rules/Process 6 1.xlsx — Final_summary.xlsx
+      rules: rules116ById(["R086", "R087", "R113", "R088", "R089"]),
+    },
+  ],
+};
+
 export const STD_STAGE3_COMPLETED: StageData = {
   id: 3,
   title: "Stage 3: Data Validation and Quality Checks",
@@ -792,12 +1119,29 @@ export const STD_STAGE5_PENDING: StageData = {
   componentType: "upload_erp",
 };
 
+// Static detail flow: Stages 3–7 "Data Processing 2–6" inserted; JE Template is Stage 8
 export const STATIC_STANDARD_DETAIL_STAGES: StageData[] = [
   STD_STAGE1_COMPLETED,
   STD_STAGE2_COMPLETED,
-  STD_STAGE3_COMPLETED,
-  STD_STAGE4_APPROVED,
-  STD_STAGE5_COMPLETED,
+  STD_STAGE3_DATA_PROCESSING2_COMPLETED,
+  STD_STAGE4_DATA_PROCESSING3_COMPLETED,
+  STD_STAGE5_DATA_PROCESSING4_COMPLETED,
+  STD_STAGE6_DATA_PROCESSING5_COMPLETED,
+  STD_STAGE7_DATA_PROCESSING6_COMPLETED,
+  // Data Validation and Upload to ERP removed from this flow
+  {
+    ...STD_STAGE4_APPROVED,
+    id: 8,
+    title: "Stage 8: JE Template Generation",
+    // BlackLine template preview (5 columns × 5 rows) with Download button
+    outputPreviewTables: [
+      {
+        fileName: "final_blackline.xlsx",
+        columns: FINAL_BLACKLINE_COLUMNS,
+        rows: FINAL_BLACKLINE_ROWS,
+      },
+    ],
+  },
 ];
 
 // ── GIT Stage 2 — build from git-stage2-data.json ────────────────────────────

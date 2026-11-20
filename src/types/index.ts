@@ -13,7 +13,39 @@ export type StageComponentType =
   | "data_extraction"
   | "data_validation"
   | "je_template"
-  | "upload_erp";
+  | "upload_erp"
+  | "email_details";
+
+/** Email shown in an "email_details" stage (e.g. Stage 4 Data Processing 3) */
+export interface EmailDetailsData {
+  subject: string;
+  receivedAt: string;
+  from: { name: string; email: string };
+  to: string[];
+  cc: string[];
+  attachments: { name: string; type: string; size?: string }[];
+  body: string[];
+  /** Optional sent timestamp shown at the right of the sender row */
+  sentAt?: string;
+  /** Optional note under recipients (e.g. "You replied to this message on ...") */
+  infoNote?: string;
+  /** Optional red external-sender warning banner */
+  externalWarning?: string;
+  /** Optional numbered points shown after the body lines */
+  bodyPoints?: string[];
+  /** Optional small table in the body (e.g. GL / cost centre amounts) */
+  bodyTable?: { title: string; rows: [string, string][] };
+  signature?: {
+    name: string;
+    title: string;
+    work: string;
+    mobile: string;
+    company: string;
+    address: string;
+  };
+  /** Business rules applied to this email / attachment */
+  rules?: string[];
+}
 
 export interface SourceFile {
   type: "EMAIL" | "ORACLE" | "SHAREDRIVE" | "UPLOADED" | "SAP";
@@ -48,6 +80,8 @@ export interface BusinessRuleCategory {
   title: string;
   items: string[];
   status: "completed" | "pending";
+  /** Optional reference files listed beside the items (e.g. Source File Requirements) */
+  referenceFiles?: string[];
 }
 
 export interface SOPOption {
@@ -167,6 +201,10 @@ export interface StageData {
   adHocPreparationData?: AdHocPreparationRow[];
   // Per-source document preview tables (indexed by source position)
   sourcePreviewTables?: SourcePreviewTable[];
+  // Output file preview shown below the input preview (e.g. Summary for Reaccrual.xlsx)
+  outputPreviewTable?: SourcePreviewTable;
+  // Multiple output file previews (e.g. Stage 3 Data Processing 2 summaries)
+  outputPreviewTables?: SourcePreviewTable[];
   // Per-source extracted fields (indexed by source position) — summary changes on file select
   extractedFieldsBySource?: ExtractedField[][];
   // Data Validation
@@ -193,6 +231,8 @@ export interface StageData {
   uploadBatchId?: string;
   uploadDate?: string;
   notificationEmail?: string;
+  // Email details (Data Processing 3)
+  emailDetails?: EmailDetailsData;
   // Exception handling
   exceptionType?: ExceptionType;
   exceptionTitle?: string;
@@ -203,11 +243,17 @@ export interface StageData {
 
 export interface SourcePreviewTable {
   fileName: string;
+  /** Path under /public of the actual file; when present the preview is read from it */
+  filePath?: string;
+  /** Server URL to download the full original file (e.g. large files kept in a UC volume) */
+  downloadUrl?: string;
   columns: string[];
   rows: string[][];
   totalLabel?: string;
   totalValue?: string;
   extractedFields?: ExtractedField[];
+  /** Business rules applied to this file (shown in Rule Summary) */
+  rules?: string[];
 }
 
 export interface AgentMessage {

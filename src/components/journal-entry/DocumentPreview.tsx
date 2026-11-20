@@ -1,5 +1,6 @@
-import React from "react";
-import { FileText } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { FileText, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import * as XLSX from "xlsx";
 import type { AdHocPreparationRow, SourcePreviewTable } from "../../types";
 import { AdHocPreparationTable } from "./AdHocPreparationTable";
 
@@ -8,7 +9,57 @@ interface DocumentPreviewProps {
   adHocPreparationData?: AdHocPreparationRow[];
   sourcePreviewTable?: SourcePreviewTable;
   isEditing?: boolean;
+  /** Header label shown above the table (default: "INPUT PREVIEW") */
+  title?: string;
 }
+
+// Preview shows only the first N columns and N rows per page
+const PREVIEW_COLUMN_COUNT = 5;
+const PREVIEW_PAGE_SIZE = 5;
+
+// Read the first sheet of a real .xlsx/.xls/.csv file served from /public.
+// Returns null when the file is missing (Vite serves index.html instead).
+const loadExcelTable = async (
+  filePath: string,
+  fileName: string,
+): Promise<SourcePreviewTable | null> => {
+  const res = await fetch(encodeURI(filePath));
+  if (!res.ok) return null;
+  const buffer = await res.arrayBuffer();
+  const bytes = new Uint8Array(buffer.slice(0, 4));
+  const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b; // "PK" = xlsx
+  const isOle = bytes[0] === 0xd0 && bytes[1] === 0xcf; // legacy .xls
+  const isCsv = /\.csv$/i.test(filePath);
+  if (!isZip && !isOle && !isCsv) return null;
+
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const aoa = XLSX.utils.sheet_to_json<(string | number)[]>(sheet, {
+    header: 1,
+    raw: false,
+    defval: "",
+  });
+  const nonEmpty = aoa.filter((r) => r.some((c) => String(c).trim() !== ""));
+  if (nonEmpty.length === 0) return null;
+  const [header, ...body] = nonEmpty;
+  return {
+    fileName,
+    filePath,
+    columns: header.map((c, i) => String(c).trim() || `Column ${i + 1}`),
+    rows: body.map((r) => header.map((_, i) => String(r[i] ?? ""))),
+  };
+};
+
+// Download the full table (all columns / rows) as an .xlsx file
+const downloadTableAsExcel = (table: SourcePreviewTable) => {
+  const sheet = XLSX.utils.aoa_to_sheet([table.columns, ...table.rows]);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, sheet, "Data");
+  const name = /\.(xlsx|xls|csv)$/i.test(table.fileName)
+    ? table.fileName.replace(/\.(xls|csv)$/i, ".xlsx")
+    : `${table.fileName}.xlsx`;
+  XLSX.writeFile(workbook, name);
+};
 
 // Mock spreadsheet rows for standard flow xlsx preview
 const SPREADSHEET_HEADERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
@@ -48,9 +99,49 @@ const SPREADSHEET_ROWS = [
 export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   fileName,
   adHocPreparationData,
-  sourcePreviewTable,
+  sourcePreviewTable: providedTable,
   isEditing = false,
+  title = "INPUT PREVIEW",
 }) => {
+  const [page, setPage] = useState(0);
+  // Table read from the actual selected file (if it exists in /public)
+  const [liveTable, setLiveTable] = useState<SourcePreviewTable | null>(null);
+
+  // Reset to the first page whenever another file is selected
+  useEffect(() => setPage(0), [fileName]);
+
+  // Load data from the selected file itself; fall back to providedTable
+  useEffect(() => {
+    setLiveTable(null);
+    const filePath = providedTable?.filePath;
+    if (!filePath) return;
+    let cancelled = false;
+    loadExcelTable(filePath, providedTable?.fileName || fileName)
+      .then((table) => {
+        if (!cancelled) setLiveTable(table);
+      })
+      .catch(() => {
+        if (!cancelled) setLiveTable(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [providedTable?.filePath, providedTable?.fileName, fileName]);
+
+  const sourcePreviewTable = liveTable ?? providedTable;
+
+  const previewColumns = sourcePreviewTable
+    ? sourcePreviewTable.columns.slice(0, PREVIEW_COLUMN_COUNT)
+    : [];
+  const totalRows = sourcePreviewTable?.rows.length ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalRows / PREVIEW_PAGE_SIZE));
+  const pageStart = page * PREVIEW_PAGE_SIZE;
+  const pageRows = sourcePreviewTable
+    ? sourcePreviewTable.rows
+        .slice(pageStart, pageStart + PREVIEW_PAGE_SIZE)
+        .map((row) => row.slice(0, PREVIEW_COLUMN_COUNT))
+    : [];
+
   const isExcel =
     fileName.endsWith(".xlsx") ||
     fileName.endsWith(".csv") ||
@@ -60,11 +151,39 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   return (
     <div>
       {/* Document Preview title + file name — outside the table */}
-      <div className="flex items-center gap-3 mb-2">
-        <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
-          DOCUMENT PREVIEW
-        </span>
-        <span className="text-[13px] text-gray-700">{fileName}</span>
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+            {title}
+          </span>
+          <span className="text-[13px] text-gray-700 truncate">{fileName}</span>
+        </div>
+        {sourcePreviewTable && (
+          <button
+            onClick={() => {
+              // Full file served by the backend (UC volume) -> download it directly
+              const downloadUrl = providedTable?.downloadUrl;
+              if (downloadUrl) {
+                const a = document.createElement("a");
+                a.href = downloadUrl;
+                a.download = providedTable?.fileName || fileName;
+                a.click();
+              } else if (liveTable?.filePath) {
+                // Real file available -> download it as-is; otherwise build from table
+                const a = document.createElement("a");
+                a.href = encodeURI(liveTable.filePath);
+                a.download = liveTable.fileName;
+                a.click();
+              } else {
+                downloadTableAsExcel(sourcePreviewTable);
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-brand bg-white border border-brand rounded-lg hover:bg-brand-surface transition-colors cursor-pointer flex-shrink-0"
+          >
+            <Download size={14} />
+            Download
+          </button>
+        )}
       </div>
 
       <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -81,7 +200,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
           <table className="w-max min-w-full text-[13px]">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {sourcePreviewTable.columns.map((col) => (
+                {previewColumns.map((col) => (
                   <th key={col} className="px-4 py-2.5 text-[11px] font-semibold text-gray-700 uppercase tracking-wide text-left whitespace-nowrap">
                     {col}
                   </th>
@@ -89,7 +208,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {sourcePreviewTable.rows.map((row, ri) => (
+              {pageRows.map((row, ri) => (
                 <tr key={ri} className="hover:bg-gray-50 transition-colors">
                   {row.map((cell, ci) => (
                     <td
@@ -113,13 +232,40 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
                   <td className="px-4 py-2.5 font-semibold text-gray-700">
                     {sourcePreviewTable.totalValue}
                   </td>
-                  {sourcePreviewTable.columns.slice(2).map((_, i) => (
+                  {previewColumns.slice(2).map((_, i) => (
                     <td key={i} className="px-4 py-2.5" />
                   ))}
                 </tr>
               )}
             </tbody>
           </table>
+          {/* Pagination */}
+          {totalRows > PREVIEW_PAGE_SIZE && (
+            <div className="flex items-center justify-between px-4 py-2 border-t border-gray-200 bg-white text-[12px] text-gray-600">
+              <span>
+                Showing {pageStart + 1}–{Math.min(pageStart + PREVIEW_PAGE_SIZE, totalRows)} of {totalRows} records
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 cursor-pointer"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span>
+                  Page {page + 1} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={page >= totalPages - 1}
+                  className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 cursor-pointer"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : adHocPreparationData ? (
         // Show ALL records in scrollable view (480px max-height)

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, CheckCircle2 } from 'lucide-react';
 import type { ExtractedField } from '../../types';
 
 interface ExtractedDataSummaryProps {
@@ -7,6 +7,8 @@ interface ExtractedDataSummaryProps {
   extractedCount: number;
   confidenceScore: number;
   onEdit?: () => void;
+  /** Business rules applied to the selected file */
+  rules?: string[];
 }
 
 export const ExtractedDataSummary: React.FC<ExtractedDataSummaryProps> = ({
@@ -14,13 +16,40 @@ export const ExtractedDataSummary: React.FC<ExtractedDataSummaryProps> = ({
   extractedCount,
   confidenceScore,
   onEdit,
+  rules,
 }) => {
+  // When rules are supplied, show only the rules (no AI data-point block)
+  const showRulesOnly = !!rules && rules.length > 0;
+
+  if (showRulesOnly) {
+    return (
+      <div className="border border-source-email-border rounded-lg overflow-hidden bg-white w-[440px]">
+        <div className="px-4 py-3">
+          <p className="text-[12px] font-semibold text-gray-700 uppercase tracking-wide mb-2">
+            RULE SUMMARY
+          </p>
+          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            Rules Applied ({rules!.length})
+          </p>
+          <ul className="space-y-1.5 max-h-[320px] overflow-y-auto scrollbar-blue">
+            {rules!.map((rule, i) => (
+              <li key={i} className="flex items-start gap-2 text-[12px] text-gray-700">
+                <CheckCircle2 size={14} className="text-completed flex-shrink-0 mt-0.5" />
+                <span>{rule}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="border border-source-email-border rounded-lg overflow-hidden bg-white">
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-200">
         <p className="text-[12px] font-semibold text-gray-700 uppercase tracking-wide mb-1">
-          DATA SUMMARY
+          RULE SUMMARY
         </p>
         <div className="flex items-center justify-between bg-brand-surface rounded-lg px-3 py-2">
           <div className="flex items-center gap-2">

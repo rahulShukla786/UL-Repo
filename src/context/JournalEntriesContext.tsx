@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import type { JEStatus, JournalEntry, StageData } from '../types';
-import { STD_BUSINESS_RULE_CATEGORIES } from '../data/mockData';
+import { STD_BUSINESS_RULE_CATEGORIES, ENTRY_PATH_MAP } from '../data/mockData';
 
 const initialEntries: JournalEntry[] = [];
 
@@ -84,7 +84,12 @@ export const JournalEntriesProvider: React.FC<{ children: React.ReactNode }> = (
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (!stored) return initialEntries;
-      return JSON.parse(stored) as JournalEntry[];
+      // Uploaded SOP entries (static flow) always show Pending, even if stored as Completed earlier
+      return (JSON.parse(stored) as JournalEntry[]).map((entry) =>
+        !ENTRY_PATH_MAP[entry.id] && entry.status === 'completed'
+          ? { ...entry, status: 'pending' as JEStatus }
+          : entry,
+      );
     } catch {
       return initialEntries;
     }

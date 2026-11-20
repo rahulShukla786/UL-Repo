@@ -13,5 +13,6 @@ export const stageHasContent = (stage: StageData): boolean =>
     stage.stdJEPostingData ||
     stage.adHocJEPostingData ||
     stage.gitJEPostingData ||
-    stage.gitJETemplateData
+    stage.gitJETemplateData ||
+    stage.emailDetails
   );

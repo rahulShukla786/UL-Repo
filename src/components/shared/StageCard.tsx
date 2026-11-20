@@ -10,6 +10,8 @@ interface StageCardProps {
   onToggleExpand: (stageId: number) => void;
   children?: React.ReactNode;
   onStageClick?: (stageId: number) => void;
+  /** Force the header to act as a "click to process" trigger (static step-through flow) */
+  forceClickable?: boolean;
 }
 
 const STAGE_STYLES: Record<
@@ -90,6 +92,7 @@ export const StageCard: React.FC<StageCardProps> = ({
   onToggleExpand,
   children,
   onStageClick,
+  forceClickable = false,
 }) => {
   const styles = STAGE_STYLES[stage.status];
 
@@ -98,20 +101,22 @@ export const StageCard: React.FC<StageCardProps> = ({
 
   // Clickable to trigger processing if in_progress, no exception, and no data yet
   const isClickableToProcess =
-    stage.status === "in_progress" &&
     !!onStageClick &&
-    !stage.exceptionType &&
-    !hasIntermediateData;
+    (forceClickable ||
+      (stage.status === "in_progress" &&
+        !stage.exceptionType &&
+        !hasIntermediateData));
 
   // Can expand/collapse
   const hasExpandableContent =
-    stage.status === "completed" ||
+    !forceClickable &&
+    (stage.status === "completed" ||
     stage.status === "failed" ||
     (stage.status === "in_progress" &&
-      (!!stage.exceptionType || hasIntermediateData));
+      (!!stage.exceptionType || hasIntermediateData)));
 
   const handleHeaderClick = () => {
-    if (isClickableToProcess) {
+    if (isClickableToProcess && onStageClick) {
       onStageClick(stage.id);
     } else if (hasExpandableContent) {
       onToggleExpand(stage.id);
