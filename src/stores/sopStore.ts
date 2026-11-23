@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { DEFAULT_LOB, isSOPLob, type SOPLob } from "../data/ruleSets";
+import { toIsoDate } from "../lib/utils";
 
 export type SOPStatus = "Active" | "Inactive";
 export type SOPRuleStatus = "Approved" | "Rejected" | "Pending";
@@ -63,11 +64,7 @@ export const useSOPStore = create<SOPStore>()(
 
       addEntry: (fileName, rules, lob) => {
         const { name: sopName, category } = getSOPNameFromFile(fileName);
-        const lastUpdated = new Date().toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "long",
-          year: "numeric",
-        });
+        const lastUpdated = toIsoDate(new Date()); // YYYY-MM-DD
         const now = Date.now();
         let isNewEntry = false;
         const copiedRules = rules.map((rule) => ({ ...rule }));

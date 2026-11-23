@@ -14,7 +14,7 @@ import { Select, SelectItem } from "../shared/Select";
 import { Button } from "../shared/Button";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { JEStatus, JournalEntry } from "../../types";
-import { cn } from "../../lib/utils";
+import { cn, getMonthYear } from "../../lib/utils";
 
 const STATUS_TABS: { key: string; label: string; status?: JEStatus }[] = [
   { key: "all", label: "All" },
@@ -200,11 +200,9 @@ export const JournalEntryTable: React.FC<JournalEntryTableProps> = ({
       const [monthName, year] = month.split(", ");
       const monthIdx = MONTHS.indexOf(monthName);
       data = data.filter((je) => {
-        if (!je.processDate) return false;
-        const parts = je.processDate.split(" ");
-        if (parts.length < 3) return false;
-        const mFull = MONTHS.find((m) => m.startsWith(parts[1])) || "";
-        return MONTHS.indexOf(mFull) === monthIdx && parts[2] === year;
+        // processDate is YYYY-MM-DD
+        const my = getMonthYear(je.processDate);
+        return !!my && my.monthIdx === monthIdx && my.year === year;
       });
     }
     return data;

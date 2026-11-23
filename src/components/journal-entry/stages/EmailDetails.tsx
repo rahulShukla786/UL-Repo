@@ -1,6 +1,18 @@
 import React from "react";
 import { ChevronDown, Mail, Info } from "lucide-react";
 import type { StageData } from "../../../types";
+import { toIsoDate } from "../../../lib/utils";
+
+// Email dates (received / sent / "You replied on") always show TODAY's date (YYYY-MM-DD);
+// a leading weekday such as "Thu" is updated too. Times are kept.
+const withToday = (text: string): string => {
+  const now = new Date();
+  const today = toIsoDate(now);
+  const weekday = now.toLocaleDateString("en-GB", { weekday: "short" });
+  return text
+    .replace(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (?=\d{4}-\d{2}-\d{2})/, `${weekday} `)
+    .replace(/\d{4}-\d{2}-\d{2}/g, today);
+};
 
 interface EmailDetailsProps {
   stage: StageData;
@@ -49,7 +61,7 @@ export const EmailDetails: React.FC<EmailDetailsProps> = ({ stage }) => {
               Email Preview
             </span>
             <span className="inline-flex items-center gap-1 text-[12px] text-gray-500">
-              <Mail size={13} /> {email.receivedAt}
+              <Mail size={13} /> {withToday(email.receivedAt)}
             </span>
           </div>
 
@@ -73,7 +85,7 @@ export const EmailDetails: React.FC<EmailDetailsProps> = ({ stage }) => {
                   <span className="text-gray-500">&lt;{email.from.email}&gt;</span>
                   </span>
                   {email.sentAt && (
-                    <span className="text-[12px] text-gray-500">{email.sentAt}</span>
+                    <span className="text-[12px] text-gray-500">{withToday(email.sentAt)}</span>
                   )}
                 </p>
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -93,7 +105,7 @@ export const EmailDetails: React.FC<EmailDetailsProps> = ({ stage }) => {
                 {email.infoNote && (
                   <p className="flex items-center gap-1.5 pt-1 text-[12px] text-gray-500">
                     <Info size={13} className="text-brand" />
-                    {email.infoNote}
+                    {withToday(email.infoNote)}
                   </p>
                 )}
               </div>

@@ -16,7 +16,7 @@ import { Button } from "../components/shared/Button";
 
 import type { ColumnDef } from "@tanstack/react-table";
 import type { JEStatus, JournalEntry } from "../types";
-import { cn } from "../lib/utils";
+import { cn, getMonthYear } from "../lib/utils";
 
 // SOP-mapped JE IDs appear at the top of the listing
 const SOP_PRIORITY_JE_IDS = new Set(["J026DMG107", "J166CNJ803", "J166CNJ804"]);
@@ -202,11 +202,9 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
       const [monthName, year] = month.split(", ");
       const monthIdx = MONTHS.indexOf(monthName);
       data = data.filter((je) => {
-        if (!je.processDate) return false;
-        const parts = je.processDate.split(" ");
-        if (parts.length < 3) return false;
-        const mFull = MONTHS.find((m) => m.startsWith(parts[1])) || "";
-        return MONTHS.indexOf(mFull) === monthIdx && parts[2] === year;
+        // processDate is YYYY-MM-DD
+        const my = getMonthYear(je.processDate);
+        return !!my && my.monthIdx === monthIdx && my.year === year;
       });
     }
     // Sort SOP-mapped entries to the top

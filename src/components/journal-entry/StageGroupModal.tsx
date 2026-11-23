@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Check, Download, Search } from "lucide-react";
+import { Download, Search } from "lucide-react";
 import type { StageData, SourcePreviewTable } from "../../types";
 import { DocumentPreview } from "./DocumentPreview";
 import { EmailDetails } from "./stages/EmailDetails";
@@ -160,7 +160,9 @@ export const StageGroupView: React.FC<StageGroupViewProps> = ({ subStages }) => 
 
   if (!selected) return null;
 
-  const currentTab = tabs.includes(activeTab) ? activeTab : tabs[0];
+  // Email stages show only the email preview: no Input/Rules/Output cards and no tabs
+  const isEmail = isEmailStage(selected);
+  const currentTab = isEmail ? "input" : tabs.includes(activeTab) ? activeTab : tabs[0];
   const inCount = inputTables(selected).length + (isEmailStage(selected) ? 1 : 0);
   const outCount = outputTables(selected).length;
   // Unique rules (the same rule set can be attached to several files)
@@ -188,14 +190,12 @@ export const StageGroupView: React.FC<StageGroupViewProps> = ({ subStages }) => 
                         {/* Card title = stage subtitle (no "Stage N: Data Processing M" label) */}
                         {s.purpose}
                       </p>
-                      <span
-                        className={cn(
-                          "text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0",
-                          isSel ? "bg-brand-surface text-brand" : "bg-green-50 text-completed",
-                        )}
-                      >
-                        {isSel ? "Selected" : "Done"}
-                      </span>
+                      {/* Only the "Selected" badge is shown (no "Done" badge) */}
+                      {isSel && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 bg-brand-surface text-brand">
+                          Selected
+                        </span>
+                      )}
                     </div>
                     <p className="text-[11px] text-gray-400 mt-1">{stageSummary(s)}</p>
                   </div>
@@ -211,11 +211,9 @@ export const StageGroupView: React.FC<StageGroupViewProps> = ({ subStages }) => 
                 {/* Details header: the stage subtitle replaces the title; no separate subtitle */}
                 <p className="text-[15px] font-semibold text-gray-900">{selected.purpose}</p>
               </div>
-              <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-50 text-completed">
-                <Check size={12} strokeWidth={3} /> Completed
-              </span>
             </div>
 
+            {!isEmail && (
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
                 <p className="text-[11px] text-gray-500">Input</p>
@@ -239,8 +237,10 @@ export const StageGroupView: React.FC<StageGroupViewProps> = ({ subStages }) => 
                 </p>
               </div>
             </div>
+            )}
 
-            {/* Tabs: only those the stage actually has */}
+            {/* Tabs: only those the stage actually has (hidden for email stages) */}
+            {!isEmail && (
             <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-4">
               {tabs.map((t) => (
                 <button
@@ -255,6 +255,7 @@ export const StageGroupView: React.FC<StageGroupViewProps> = ({ subStages }) => 
                 </button>
               ))}
             </div>
+            )}
 
             {currentTab === "input" && (
               <div className="space-y-4">

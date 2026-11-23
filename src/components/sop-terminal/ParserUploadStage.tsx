@@ -8,6 +8,8 @@ import { SOP_LOBS, isSOPLob, type SOPLob } from "../../data/ruleSets";
 export interface UploadedFile {
   name: string;
   sizeKb: number;
+  /** The uploaded document itself (kept so the SOP Library can download it) */
+  file?: File;
 }
 
 interface FileDropCardProps {

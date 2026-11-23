@@ -1,17 +1,13 @@
 // ── Warehouse Stage 3 (Data Processing 2) ─────────────────────────────────────
-// Input file      : warehouseDocs/Data/SAP.xlsx (sheet "SAP", header on row 2)
-// Output file     : warehouseDocs/Data/Snapshot New.xlsx (sheet "Snapshot New")
-// Reference files : warehouseDocs/Data/snapshot.xlsx, warehouseDocs/Data/FC Update.xlsx
-//                   (offered in the "Reference Files" download menu)
-// Preview = first 5 rows x 5 columns taken from each file.
+// Input file      : Excellist/NewWH/SAP_data.xlsx (Sheet1, 69 rows)
+// Output file     : Excellist/NewWH/snapshot_new.xlsx (Sheet1 values by plant + Sheet2 labels, 19 lines)
+// Reference files : warehouseDocs/Data/FC Update.xlsx
+// Preview = ALL rows x 5 columns; DocumentPreview pages them 5 rows at a time.
 // Download = the original Excel file (bundled by Vite via ?url).
-import sapUrl from "../../warehouseDocs/Data/SAP.xlsx?url";
-import snapshotNewUrl from "../../warehouseDocs/Data/Snapshot New.xlsx?url";
-import snapshotUrl from "../../warehouseDocs/Data/snapshot.xlsx?url";
+import sapUrl from "../../Excellist/NewWH/SAP_data.xlsx?url";
+import snapshotNewUrl from "../../Excellist/NewWH/snapshot_new.xlsx?url";
 import fcUpdateUrl from "../../warehouseDocs/Data/FC Update.xlsx?url";
 import type { SourceFile, SourcePreviewTable, StageData } from "../types";
-
-const SAP_TOTAL_RECORDS = 22677;
 
 // Rule Summary for Stage 3 — from warehouseDocs/Data/Stage-2.xlsx (sheet "Rules Summary").
 const STAGE3_RULES: string[] = [
@@ -64,29 +60,108 @@ const STAGE3_RULES: string[] = [
 ];
 
 const SAP_INPUT: SourcePreviewTable = {
-  fileName: "SAP.xlsx",
+  fileName: "SAP_data.xlsx",
   downloadUrl: sapUrl,
-  columns: ["Description", "Cost Element", "Cost Element Description", "Cost Center", "Val.in rep.cur."],
-  rows: [
-    ["Reversal", "31812005", "Distribution 3p Warehousing - Picking", "1067932699", "-129.30"],
-    ["Reversal", "31812003", "Distn-3rd Pty Warehousing-Outbound", "1035632699", "-358.36"],
-    ["Reversal", "31812010", "Distribution - 3rd Pty Warehousing - Oth", "1035532696", "-439.32"],
-    ["Reversal", "31812010", "Distribution - 3rd Pty Warehousing - Oth", "1035632699", "-669.71"],
-    ["Reversal", "31812006", "Distn-3pty WH-Waste", "1035632699", "-937.01"],
-  ],
-  rules: STAGE3_RULES,
-};
-
-const SNAPSHOT_NEW_OUTPUT: SourcePreviewTable = {
-  fileName: "Snapshot New.xlsx",
-  downloadUrl: snapshotNewUrl,
-  columns: ["Cost Element", "Cost element descr.", "Cost Center", "Document Header Text", "Val.in rep.cur."],
+  columns: ["Cost Element", "Cost Element Description", "Cost Center", "Header Text", "Val.in rep.cur."],
   rows: [
     ["31812010", "Distribution - 3rd Pty Warehousing - Oth", "1000532699", "W3626_Standard invoice", "2,731.55"],
     ["31812007", "Distn-3pty WH-Admin", "1000532699", "W3626_Standard invoice", "1,171.32"],
     ["31812002", "Distribution-3rd Pty Warehousing-Inbound", "1000532699", "W3626_Standard invoice", "17,836.23"],
     ["31812003", "Distn-3rd Pty Warehousing-Outbound", "1000532699", "W3626_Standard invoice", "13,463.97"],
     ["31812005", "Distribution 3p Warehousing - Picking", "1000532699", "W3626_Standard invoice", "22,625.89"],
+    ["31812004", "Distribution-3rd Pty Warehousing-Storage", "1000532699", "W3626_Standard invoice", "46,970.77"],
+    ["31812006", "Distn-3pty WH-Waste", "1000532699", "W3626_Standard invoice", "5,524.52"],
+    ["31812010", "Distribution - 3rd Pty Warehousing - Oth", "1000532699", "W3726_Standard invoice", "5,943.22"],
+    ["31812007", "Distn-3pty WH-Admin", "1000532699", "W3726_Standard invoice", "1,171.32"],
+    ["31812002", "Distribution-3rd Pty Warehousing-Inbound", "1000532699", "W3726_Standard invoice", "18,016.77"],
+    ["31812003", "Distn-3rd Pty Warehousing-Outbound", "1000532699", "W3726_Standard invoice", "12,014.55"],
+    ["31812005", "Distribution 3p Warehousing - Picking", "1000532699", "W3726_Standard invoice", "20,606.62"],
+    ["31812004", "Distribution-3rd Pty Warehousing-Storage", "1000532699", "W3726_Standard invoice", "46,769.46"],
+    ["31812006", "Distn-3pty WH-Waste", "1000532699", "W3726_Standard invoice", "6,294.15"],
+    ["31812010", "Distribution - 3rd Pty Warehousing - Oth", "1000532699", "W3826_Standard invoice", "2,745.54"],
+    ["31812007", "Distn-3pty WH-Admin", "1000532699", "W3826_Standard invoice", "1,171.32"],
+    ["31812002", "Distribution-3rd Pty Warehousing-Inbound", "1000532699", "W3826_Standard invoice", "17,608.17"],
+    ["31812003", "Distn-3rd Pty Warehousing-Outbound", "1000532699", "W3826_Standard invoice", "15,471.13"],
+    ["31812005", "Distribution 3p Warehousing - Picking", "1000532699", "W3826_Standard invoice", "21,423.53"],
+    ["31812004", "Distribution-3rd Pty Warehousing-Storage", "1000532699", "W3826_Standard invoice", "47,250.12"],
+    ["31812006", "Distn-3pty WH-Waste", "1000532699", "W3826_Standard invoice", "7,124.46"],
+    ["31812010", "Distribution - 3rd Pty Warehousing - Oth", "1000532699", "W1026_Standard invoice", "2,821.63"],
+    ["31812007", "Distn-3pty WH-Admin", "1000532699", "W1026_Standard invoice", "1,123.67"],
+    ["31812002", "Distribution-3rd Pty Warehousing-Inbound", "1000532699", "W1026_Standard invoice", "22,575.77"],
+    ["31812003", "Distn-3rd Pty Warehousing-Outbound", "1000532699", "W1026_Standard invoice", "13,863.74"],
+    ["31812005", "Distribution 3p Warehousing - Picking", "1000532699", "W1026_Standard invoice", "18,275.99"],
+    ["31812004", "Distribution-3rd Pty Warehousing-Storage", "1000532699", "W1026_Standard invoice", "48,938.40"],
+    ["31812006", "Distn-3pty WH-Waste", "1000532699", "W1026_Standard invoice", "6,763.58"],
+    ["31812010", "Distribution - 3rd Pty Warehousing - Oth", "1000532699", "TUN-INV-08130313", "0.01"],
+    ["31812010", "Distribution - 3rd Pty Warehousing - Oth", "1000532699", "TUN-INV-08068268", "0.02"],
+    ["31812002", "Distribution-3rd Pty Warehousing-Inbound", "1000532699", "P0926 ACR BNL", "-97,748.30"],
+    ["31812003", "Distn-3rd Pty Warehousing-Outbound", "1000532699", "P0926 ACR BNL", "-73,028.49"],
+    ["31812005", "Distribution 3p Warehousing - Picking", "1000532699", "P0926 ACR BNL", "-119,585.98"],
+    ["31812004", "Distribution-3rd Pty Warehousing-Storage", "1000532699", "P0926 ACR BNL", "-247,260.85"],
+    ["31812006", "Distn-3pty WH-Waste", "1000532699", "P0926 ACR BNL", "-27,191.70"],
+    ["31812007", "Distn-3pty WH-Admin", "1000532699", "P0926 ACR BNL", "-4,908.54"],
+    ["31812010", "Distribution - 3rd Pty Warehousing - Oth", "1000532699", "P0926 ACR BNL", "-12,606.93"],
+    ["31812005", "Distribution 3p Warehousing - Picking", "1000532699", "TUN-INV-08223956", "-0.01"],
+    ["31812010", "Distribution - 3rd Pty Warehousing - Oth", "1000532699", "W3926_Standard invoice", "2,837.37"],
+    ["31812007", "Distn-3pty WH-Admin", "1000532699", "W3926_Standard invoice", "1,171.32"],
+    ["31812002", "Distribution-3rd Pty Warehousing-Inbound", "1000532699", "W3926_Standard invoice", "20,501.68"],
+    ["31812003", "Distn-3rd Pty Warehousing-Outbound", "1000532699", "W3926_Standard invoice", "14,291.70"],
+    ["31812005", "Distribution 3p Warehousing - Picking", "1000532699", "W3926_Standard invoice", "17,278.82"],
+    ["31812004", "Distribution-3rd Pty Warehousing-Storage", "1000532699", "W3926_Standard invoice", "47,153.13"],
+    ["31812006", "Distn-3pty WH-Waste", "1000532699", "W3926_Standard invoice", "5,216.43"],
+    ["31812010", "Distribution - 3rd Pty Warehousing - Oth", "1000532699", "W4026_Standard invoice", "2,750.79"],
+    ["31812007", "Distn-3pty WH-Admin", "1000532699", "W4026_Standard invoice", "1,171.32"],
+    ["31812002", "Distribution-3rd Pty Warehousing-Inbound", "1000532699", "W4026_Standard invoice", "18,719.96"],
+    ["31812003", "Distn-3rd Pty Warehousing-Outbound", "1000532699", "W4026_Standard invoice", "14,472.88"],
+    ["31812005", "Distribution 3p Warehousing - Picking", "1000532699", "W4026_Standard invoice", "17,485.34"],
+    ["31812004", "Distribution-3rd Pty Warehousing-Storage", "1000532699", "W4026_Standard invoice", "46,584.89"],
+    ["31812006", "Distn-3pty WH-Waste", "1000532699", "W4026_Standard invoice", "3,762.95"],
+    ["31812010", "Distribution - 3rd Pty Warehousing - Oth", "1000532699", "W4126_Standard invoice", "2,735.92"],
+    ["31812007", "Distn-3pty WH-Admin", "1000532699", "W4126_Standard invoice", "1,171.32"],
+    ["31812002", "Distribution-3rd Pty Warehousing-Inbound", "1000532699", "W4126_Standard invoice", "19,499.17"],
+    ["31812003", "Distn-3rd Pty Warehousing-Outbound", "1000532699", "W4126_Standard invoice", "12,590.06"],
+    ["31812005", "Distribution 3p Warehousing - Picking", "1000532699", "W4126_Standard invoice", "23,441.28"],
+    ["31812004", "Distribution-3rd Pty Warehousing-Storage", "1000532699", "W4126_Standard invoice", "46,722.64"],
+    ["31812006", "Distn-3pty WH-Waste", "1000532699", "W4126_Standard invoice", "6,498.95"],
+    ["31812010", "Distribution - 3rd Pty Warehousing - Oth", "1000532699", "W4226_Standard invoice", "2,712.31"],
+    ["31812007", "Distn-3pty WH-Admin", "1000532699", "W4226_Standard invoice", "1,171.32"],
+    ["31812002", "Distribution-3rd Pty Warehousing-Inbound", "1000532699", "W4226_Standard invoice", "22,962.84"],
+    ["31812003", "Distn-3rd Pty Warehousing-Outbound", "1000532699", "W4226_Standard invoice", "11,108.66"],
+    ["31812005", "Distribution 3p Warehousing - Picking", "1000532699", "W4226_Standard invoice", "15,029.27"],
+    ["31812004", "Distribution-3rd Pty Warehousing-Storage", "1000532699", "W4226_Standard invoice", "48,811.33"],
+    ["31812006", "Distn-3pty WH-Waste", "1000532699", "W4226_Standard invoice", "4,603.77"],
+    ["42406001", "Other Intercompany (Gp) - Charges-in", "1000532699", "Stock BI Insurance", "1,339.24"],
+    ["42406001", "Other Intercompany (Gp) - Charges-in", "1000532699", "Stock BI Insurance", "1,526.10"],
+    ["31812006", "Distn-3pty WH-Waste", "1000532699", "ACCM_Rev_Oct26", "0.01"],
+  ],
+  rules: STAGE3_RULES,
+};
+
+const SNAPSHOT_NEW_OUTPUT: SourcePreviewTable = {
+  fileName: "snapshot_new.xlsx",
+  downloadUrl: snapshotNewUrl,
+  // Details = labels from Sheet2; plant columns = values from Sheet1 (C600, E001, E004, A211)
+  columns: ["Details", "C600", "E001", "E004", "A211"],
+  rows: [
+    ["SAP Results Before Accruals", "301,289.39", "74,162.50", "-19,819.99", "-40,827.97"],
+    ["Non Judgemental Accruals - Current Period", "232,849.27", "517,993.13", "0.00", "300,830.68"],
+    ["0031812002", "44,391.01", "82,901.19", "0.00", "38,471.96"],
+    ["0031812003", "28,601.17", "66,287.94", "0.00", "43,540.87"],
+    ["0031812004", "89,989.36", "215,595.32", "0.00", "162,731.60"],
+    ["0031812005", "50,344.97", "97,189.04", "0.00", "43,979.25"],
+    ["0031812006", "10,060.02", "29,647.59", "0.00", "0.00"],
+    ["0031812007", "1,831.77", "0.00", "0.00", "12,107.00"],
+    ["0031812008", "0.00", "0.00", "0.00", "0.00"],
+    ["0031812010", "7,630.96", "26,372.06", "0.00", "0.00"],
+    ["Non Judgemental Re-Accruals - Prior Periods", "0.00", "163,067.61", "0.00", "0.00"],
+    ["Judgemental Accruals - Current Period", "0.00", "0.00", "26,731.80", "0.00"],
+    ["Judgemental Accruals Reacrruals", "0.00", "0.00", "0.00", "0.00"],
+    ["Other Adjustments - (Snapshot Only )", "-5,064.17", "3,711.02", "0.00", "57,504.93"],
+    ["Stock adjustment", "-2,208.17", "8,937.02", "0.00", "74,211.93"],
+    ["QD Reclass", "-2,856.00", "-5,226.00", "", "-16,707.00"],
+    ["Final SAP", "529,074.49", "758,934.26", "6,911.81", "317,507.64"],
+    ["Forecast", "585,497.01", "667,024.47", "13,437.14", "225,871.01"],
+    ["Variance", "56,422.52", "-91,909.79", "6,525.33", "-91,636.63"],
   ],
 };
 
@@ -95,12 +170,12 @@ export const WAREHOUSE_STAGE3: Partial<StageData> = {
   purpose: "Process SAP data and build plant summaries",
   componentType: "data_extraction",
   extractedCount: 1,
-  totalRecords: SAP_TOTAL_RECORDS,
+  totalRecords: SAP_INPUT.rows.length,
   sources: [
     {
       type: "SHAREDRIVE",
       name: SAP_INPUT.fileName,
-      date: "20 Nov 2026",
+      date: "2026-11-20",
       status: "success",
     } as SourceFile,
   ],
@@ -109,8 +184,6 @@ export const WAREHOUSE_STAGE3: Partial<StageData> = {
   outputPreviewTables: undefined,
   extractedFieldsBySource: undefined,
   extractedFields: undefined,
-  stageReferenceFiles: [
-    { fileName: "snapshot.xlsx", downloadUrl: snapshotUrl },
-    { fileName: "FC Update.xlsx", downloadUrl: fcUpdateUrl },
-  ],
+  // snapshot.xlsx removed per user; only FC Update.xlsx remains
+  stageReferenceFiles: [{ fileName: "FC Update.xlsx", downloadUrl: fcUpdateUrl }],
 };

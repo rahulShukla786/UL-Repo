@@ -7,6 +7,7 @@ import { ParserExtractingOverlay } from "./ParserExtractingOverlay";
 import { ParserRulesStage } from "./ParserRulesStage";
 import type { SOPRule } from "../../stores/sopStore";
 import { guessLobFromFileName, type SOPLob } from "../../data/ruleSets";
+import { saveSopFile } from "../../lib/sopFiles";
 
 const ALLOWED_TYPES = ["pdf", "doc", "docx", "txt"];
 
@@ -31,6 +32,7 @@ export const SOPParserPanel: React.FC<SOPParserPanelProps> = ({ onSaveToLibrary 
     setUploadedFile({
       name: file.name,
       sizeKb: Math.max(1, Math.round(file.size / 1024)),
+      file,
     });
     setRepoConnected(false);
     // Pre-select the SOP type from the file name (e.g. "..._WH_..." = Warehouse); user can change it
@@ -50,6 +52,16 @@ export const SOPParserPanel: React.FC<SOPParserPanelProps> = ({ onSaveToLibrary 
     event.preventDefault();
     setIsDragOver(false);
     processFile(event.dataTransfer.files?.[0]);
+  };
+
+  // Save to Library also keeps the uploaded document, so the Library "Download" button returns it
+  const handleSaveToLibrary = (fileName: string, rules: SOPRule[], selectedLob: SOPLob) => {
+    if (uploadedFile?.file) {
+      saveSopFile(uploadedFile.file).catch(() => {
+        // browser storage not available -> Download falls back to the rules file
+      });
+    }
+    onSaveToLibrary?.(fileName, rules, selectedLob);
   };
 
   const handleExtract = () => {
@@ -99,7 +111,7 @@ export const SOPParserPanel: React.FC<SOPParserPanelProps> = ({ onSaveToLibrary 
         <ParserRulesStage
           uploadedFile={uploadedFile}
           lob={lob}
-          onSaveToLibrary={onSaveToLibrary}
+          onSaveToLibrary={handleSaveToLibrary}
         />
       ) : null}
 

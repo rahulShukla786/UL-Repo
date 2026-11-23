@@ -9,7 +9,7 @@ import { Select, SelectItem } from "../components/shared/Select";
 import { Button } from "../components/shared/Button";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { JEStatus, JournalEntry } from "../types";
-import { cn } from "../lib/utils";
+import { cn, getMonthYear } from "../lib/utils";
 
 const MONTHS = [
   "January",
@@ -176,12 +176,9 @@ export const ManualQueue: React.FC = () => {
       new Set(
         baseData
           .map((je) => {
-            if (!je.processDate) return null;
-            const parts = je.processDate.split(" ");
-            if (parts.length < 3) return null;
-            const monthFull =
-              MONTHS.find((m) => m.startsWith(parts[1])) || parts[1];
-            return `${monthFull}, ${parts[2]}`;
+            // processDate is YYYY-MM-DD
+            const my = getMonthYear(je.processDate);
+            return my ? `${MONTHS[my.monthIdx]}, ${my.year}` : null;
           })
           .filter(Boolean),
       ),
@@ -207,10 +204,8 @@ export const ManualQueue: React.FC = () => {
       const [monthName, year] = month.split(", ");
       const monthIdx = MONTHS.indexOf(monthName);
       data = data.filter((je) => {
-        if (!je.processDate) return false;
-        const parts = je.processDate.split(" ");
-        const mFull = MONTHS.find((m) => m.startsWith(parts[1])) || "";
-        return MONTHS.indexOf(mFull) === monthIdx && parts[2] === year;
+        const my = getMonthYear(je.processDate);
+        return !!my && my.monthIdx === monthIdx && my.year === year;
       });
     }
     return data;

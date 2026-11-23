@@ -6,7 +6,7 @@ import { Input } from "../components/shared/Input";
 import { Select, SelectItem } from "../components/shared/Select";
 import { SOPParserPanel } from "../components/sop-terminal/SOPParserPanel";
 import { SOPLibraryDetailPanel } from "../components/sop-terminal/SOPLibraryDetailPanel";
-import { cn } from "../lib/utils";
+import { cn, formatDate } from "../lib/utils";
 import { useJournalEntries } from "../context/JournalEntriesContext";
 import { useSOPStore } from "../stores/sopStore";
 import type { SOPEntry, SOPStatus } from "../stores/sopStore";
@@ -185,6 +185,8 @@ export const SOPTerminal: React.FC = () => {
     {
       header: "LAST UPDATED",
       accessorKey: "lastUpdated",
+      // Shown as YYYY-MM-DD (older saved entries may use "23 November 2026")
+      cell: ({ getValue }) => formatDate(getValue<string>()),
     },
     {
       header: "STATUS",
@@ -257,7 +259,7 @@ export const SOPTerminal: React.FC = () => {
             name={selectedEntry.name}
             version={selectedEntry.version}
             category={selectedEntry.category}
-            lastUpdated={selectedEntry.lastUpdated}
+            lastUpdated={formatDate(selectedEntry.lastUpdated)}
             status={selectedEntry.status}
             mappedJournalEntries={selectedEntry.mappedJournalEntries}
             rules={selectedEntry.rules}

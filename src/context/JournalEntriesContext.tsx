@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 import type { JEStatus, JournalEntry, StageData } from '../types';
 import { STD_BUSINESS_RULE_CATEGORIES, ENTRY_PATH_MAP } from '../data/mockData';
 import { DEFAULT_LOB, type SOPLob } from '../data/ruleSets';
+import { formatDate, toIsoDate, toIsoDateTime } from '../lib/utils';
 
 const initialEntries: JournalEntry[] = [];
 
@@ -26,12 +27,8 @@ const getSOPName = (fileName: string): string =>
     .replace(/\s+/g, ' ')
     .trim() || 'Uploaded SOP';
 
-const formatProcessDate = (date: Date): string =>
-  date.toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).replace(/Sept\b/, 'Sep');
+// Dates are shown as YYYY-MM-DD everywhere
+const formatProcessDate = (date: Date): string => toIsoDate(date);
 
 const createJournalId = (): string => {
   const suffix = Math.random().toString(36).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 7);
@@ -86,11 +83,19 @@ export const JournalEntriesProvider: React.FC<{ children: React.ReactNode }> = (
       const stored = localStorage.getItem(STORAGE_KEY);
       if (!stored) return initialEntries;
       // Uploaded SOP entries (static flow) always show Pending, even if stored as Completed earlier
-      return (JSON.parse(stored) as JournalEntry[]).map((entry) =>
-        !ENTRY_PATH_MAP[entry.id] && entry.status === 'completed'
-          ? { ...entry, status: 'pending' as JEStatus }
-          : entry,
-      );
+      return (JSON.parse(stored) as JournalEntry[])
+        .map((entry) =>
+          !ENTRY_PATH_MAP[entry.id] && entry.status === 'completed'
+            ? { ...entry, status: 'pending' as JEStatus }
+            : entry,
+        )
+        // Entries saved earlier may still use "23 Nov 2026" -> convert to YYYY-MM-DD
+        .map((entry) => ({
+          ...entry,
+          processDate: formatDate(entry.processDate),
+          executionStarted: formatDate(entry.executionStarted),
+          executionHistory: entry.executionHistory ? formatDate(entry.executionHistory) : entry.executionHistory,
+        }));
     } catch {
       return initialEntries;
     }
@@ -118,13 +123,7 @@ export const JournalEntriesProvider: React.FC<{ children: React.ReactNode }> = (
       processDate: formatProcessDate(now),
       status: 'pending',
       sop: getSOPName(fileName),
-      executionStarted: now.toLocaleString('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
+      executionStarted: toIsoDateTime(now),
       progress: 0,
       stages: createPendingStages(),
       aiProcessingLog: [],

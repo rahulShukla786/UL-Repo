@@ -1,15 +1,13 @@
 // ── Warehouse Stage 4 (JE Template Generation) ─────────────────────────────────
-// Input file  : warehouseDocs/Data/Trintech.xlsx (sheet "Trintech", header on row 2)
+// Input file  : Excellist/NewWH/Trintech_ (1).xlsx (Sheet1, 10 rows, all shown with pagination)
 // Output file : warehouseDocs/Data/SIRIUS_UL Calc & Post_1.xlsx
 //               (sheet "1.SIRIUS_UL Calc & Post _1", header on row 3, line rows "L")
 // Preview = first 5 rows x 5 columns taken from each file.
 // Download = the original Excel file (bundled by Vite via ?url).
 // Warehouse flow ends at this stage (Logistics keeps all 8 stages).
-import trintechUrl from "../../warehouseDocs/Data/Trintech.xlsx?url";
+import trintechUrl from "../../Excellist/NewWH/Trintech_ (1).xlsx?url";
 import siriusUrl from "../../warehouseDocs/Data/SIRIUS_UL Calc & Post_1.xlsx?url";
 import type { SourceFile, SourcePreviewTable, StageData } from "../types";
-
-const TRINTECH_TOTAL_RECORDS = 99;
 
 // Rule Summary for Stage 4 — from warehouseDocs/Data/Stage-final-rules.xlsx (sheet "Trintech_BlackLine_Rules").
 const STAGE4_RULES: string[] = [
@@ -27,7 +25,7 @@ const STAGE4_RULES: string[] = [
 ];
 
 const TRINTECH_INPUT: SourcePreviewTable = {
-  fileName: "Trintech.xlsx",
+  fileName: "Trintech_ (1).xlsx",
   downloadUrl: trintechUrl,
   columns: ["GL", "Amount", "CC", "Text", "Plant"],
   rows: [
@@ -36,6 +34,11 @@ const TRINTECH_INPUT: SourcePreviewTable = {
     ["31812005", "50,344.97", "1000532699", "P1026 ACR BNL C600 Picking", "C600"],
     ["14410020", "-123,337.16", "-", "P1026 ACR BNL C600", "C600"],
     ["31812004", "89,989.36", "1000532699", "P1026 ACR BNL C600 Storage", "C600"],
+    ["31812006", "10,060.02", "1000532699", "P1026 ACR BNL C600 Waste", "C600"],
+    ["31812007", "1,831.77", "1000532699", "P1026 ACR BNL C600 Admin", "C600"],
+    ["31812010", "7,630.96", "1000532699", "P1026 ACR BNL C600 Other", "C600"],
+    ["31812008", "0.00", "1000532699", "P1026 ACR BNL C600 Rework", "C600"],
+    ["14410020", "-109,512.12", "-", "P1026 ACR BNL C600", "C600"],
   ],
   rules: STAGE4_RULES,
 };
@@ -59,12 +62,12 @@ export const WAREHOUSE_STAGE4: Partial<StageData> = {
   purpose: "Build structured JE draft",
   componentType: "data_extraction",
   extractedCount: 1,
-  totalRecords: TRINTECH_TOTAL_RECORDS,
+  totalRecords: TRINTECH_INPUT.rows.length,
   sources: [
     {
       type: "SHAREDRIVE",
       name: TRINTECH_INPUT.fileName,
-      date: "20 Nov 2026",
+      date: "2026-11-20",
       status: "success",
     } as SourceFile,
   ],

@@ -12,6 +12,7 @@ import {
 import type { StageData } from "../../../types";
 import { ApprovalEmailModal } from "../../shared/ApprovalEmailModal";
 import type { EmailAttachment } from "../../shared/ApprovalEmailModal";
+import { toIsoDateTime } from "../../../lib/utils";
 
 interface JETemplateProps {
   stage: StageData;
@@ -80,19 +81,8 @@ export const JETemplate: React.FC<JETemplateProps> = ({
   const handleManualApprove = () => {
     setLocalApprovalStatus("approved");
     const now = new Date();
-    const formatted =
-      now.toLocaleDateString("en-US", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }) +
-      ", " +
-      now.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      }) +
-      " CST";
+    // YYYY-MM-DD, HH:mm
+    const formatted = toIsoDateTime(now).replace(" ", ", ") + " CST";
     setLocalApprovalDetails(`Manually approved by John Doe - ${formatted}`);
     if (onStageComplete) onStageComplete();
   };

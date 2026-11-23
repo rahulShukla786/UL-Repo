@@ -15,6 +15,7 @@ import { Input } from "../shared/Input";
 import { Select, SelectItem } from "../shared/Select";
 import { cn } from "../../lib/utils";
 import { useSOPStore } from "../../stores/sopStore";
+import { downloadSop } from "../../lib/sopFiles";
 import type { SOPRule, SOPRuleStatus } from "../../stores/sopStore";
 
 type RuleStatus = SOPRuleStatus;
@@ -500,6 +501,10 @@ export const SOPLibraryDetailPanel: React.FC<SOPLibraryDetailPanelProps> = ({
               type="button"
               variant="secondary"
               className="h-9 min-w-30 border-brand text-brand hover:bg-brand-light"
+              // Downloads this SOP's document (uploaded file / bundled doc; else its rules as Excel)
+              onClick={() => {
+                void downloadSop(name, rules);
+              }}
             >
               <Download size={14} className="mr-1" />
               Download

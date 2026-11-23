@@ -118,11 +118,18 @@ export const JournalEntryDetail: React.FC = () => {
   // Warehouse uses these 4 stages, Logistics 8; in both, the data-processing stages are
   // grouped into one expandable "Stage 2" so the page shows Stage 1 / 2 / 3.
   const isWarehouseEntry = usesStaticTemplate && uploadedEntry?.lob === "Warehouse";
+  // Stage 1 subtitle describes what Stage 1 shows for the LOB (static flow only)
+  const stage1Subtitle = isWarehouseEntry
+    ? "Read the Warehouse SOP rules and the required source and reference files"
+    : "Read the Logistics SOP business rules used in the accrual process";
   const [stages, setStages] = useState<StageData[]>(() =>
     initialStages
       .filter((stage) => !isWarehouseEntry || stage.id <= WAREHOUSE_STAGE_COUNT)
       .map((stage) => {
-        if (isWarehouseEntry && stage.id === 1) return { ...stage, businessRuleCategories: [] };
+        if (usesStaticTemplate && stage.id === 1) {
+          const base = isWarehouseEntry ? { ...stage, businessRuleCategories: [] } : { ...stage };
+          return { ...base, purpose: stage1Subtitle };
+        }
         if (isWarehouseEntry && stage.id === 2) return { ...stage, ...WAREHOUSE_STAGE2 };
         if (isWarehouseEntry && stage.id === 3) return { ...stage, ...WAREHOUSE_STAGE3 };
         if (isWarehouseEntry && stage.id === 4) return { ...stage, ...WAREHOUSE_STAGE4 };

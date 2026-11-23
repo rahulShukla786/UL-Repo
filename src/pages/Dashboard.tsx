@@ -136,7 +136,7 @@ export const Dashboard: React.FC = () => {
           <p className="text-[11px] text-blue-200 mb-1.5">Date Range</p>
           <div className="flex items-center gap-2.5 bg-white/10 rounded-xl px-4 py-2.5 border border-white/20">
             <span className="text-white text-[14px] font-medium">
-              01 Januaury, 2026 - 01 July, 2026
+              2026-01-01 - 2026-07-01
             </span>
             <Calendar size={15} className="text-blue-300 flex-shrink-0" />
           </div>
