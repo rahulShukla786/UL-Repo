@@ -235,6 +235,8 @@ export interface StageData {
   notificationEmail?: string;
   // Email details (Data Processing 3)
   emailDetails?: EmailDetailsData;
+  // Grouped stage (e.g. Logistics Stage 2 = original Stages 2–7); click opens a pipeline modal
+  subStages?: StageData[];
   // Exception handling
   exceptionType?: ExceptionType;
   exceptionTitle?: string;

@@ -142,7 +142,9 @@ export const SOPTerminal: React.FC = () => {
 
   const filteredEntries = useMemo(() => {
     return sopEntries.filter((row) => {
-      const matchesSearch = row.name.toLowerCase().includes(search.toLowerCase());
+      const matchesSearch =
+        row.name.toLowerCase().includes(search.toLowerCase()) ||
+        (row.sopCode ?? "").toLowerCase().includes(search.toLowerCase());
       const matchesCategory =
         selectedCategory === "All" || row.category === selectedCategory;
       const matchesStatus =
@@ -155,8 +157,9 @@ export const SOPTerminal: React.FC = () => {
 
   const columns: ColumnDef<SOPEntry>[] = [
     {
-      header: "SOP NAME",
-      accessorKey: "name",
+      // SOP ID first; it is the clickable link that opens the SOP details
+      header: "SOP ID",
+      accessorKey: "sopCode",
       cell: ({ getValue }) => (
         <span className="text-brand font-medium hover:underline cursor-pointer">
           {getValue<string>()}
@@ -164,8 +167,8 @@ export const SOPTerminal: React.FC = () => {
       ),
     },
     {
-      header: "VERSION NUMBER",
-      accessorKey: "version",
+      header: "SOP NAME",
+      accessorKey: "name",
     },
     {
       header: "COUNTRY",
@@ -287,7 +290,7 @@ export const SOPTerminal: React.FC = () => {
                     <Input
                       value={search}
                       onChange={(event) => setSearch(event.target.value)}
-                      placeholder="Search by SOP Name..."
+                      placeholder="Search by SOP ID or SOP Name..."
                       className="h-9 pl-9"
                     />
                   </div>

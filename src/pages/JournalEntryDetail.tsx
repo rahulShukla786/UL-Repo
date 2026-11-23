@@ -36,6 +36,7 @@ import { JETemplate } from "../components/journal-entry/stages/JETemplate";
 import { UploadERP } from "../components/journal-entry/stages/UploadERP";
 import { EmailDetails } from "../components/journal-entry/stages/EmailDetails";
 import { DocumentPreview } from "../components/journal-entry/DocumentPreview";
+import { StageGroupView } from "../components/journal-entry/StageGroupModal";
 import type { StageData, JEStatus } from "../types";
 
 interface StageContentProps {
@@ -114,7 +115,8 @@ export const JournalEntryDetail: React.FC = () => {
   // Stage 3 shows SAP.xlsx input + Snapshot New.xlsx output, with snapshot.xlsx /
   // FC Update.xlsx as Reference Files;
   // Stage 4 "JE Template Generation" shows Trintech.xlsx input + SIRIUS_UL Calc & Post_1.xlsx output.
-  // Warehouse shows only these 4 stages; Logistics keeps all 8 stages.
+  // Warehouse uses these 4 stages, Logistics 8; in both, the data-processing stages are
+  // grouped into one expandable "Stage 2" so the page shows Stage 1 / 2 / 3.
   const isWarehouseEntry = usesStaticTemplate && uploadedEntry?.lob === "Warehouse";
   const [stages, setStages] = useState<StageData[]>(() =>
     initialStages
@@ -125,7 +127,36 @@ export const JournalEntryDetail: React.FC = () => {
         if (isWarehouseEntry && stage.id === 3) return { ...stage, ...WAREHOUSE_STAGE3 };
         if (isWarehouseEntry && stage.id === 4) return { ...stage, ...WAREHOUSE_STAGE4 };
         return { ...stage };
-      }),
+      })
+      .reduce<StageData[]>((acc, stage) => {
+        // Static flow: data-processing stages are grouped into one "Stage 2"
+        // (Logistics: original Stages 2–7; Warehouse: Stages 2–3); JE Template becomes Stage 3.
+        if (!usesStaticTemplate) return [...acc, stage];
+        const lastGroupedId = isWarehouseEntry ? 3 : 7;
+        const jeTemplateId = isWarehouseEntry ? WAREHOUSE_STAGE_COUNT : 8;
+        if (stage.id >= 2 && stage.id <= lastGroupedId) {
+          const group = acc.find((s) => s.id === 2 && s.subStages);
+          if (group) {
+            group.subStages = [...(group.subStages ?? []), stage];
+            return acc;
+          }
+          return [
+            ...acc,
+            {
+              id: 2,
+              title: "Stage 2: Data Processing",
+              purpose: "Data Processing using calculation and validation rules",
+              status: stage.status,
+              componentType: "data_extraction",
+              subStages: [stage],
+            },
+          ];
+        }
+        if (stage.id === jeTemplateId) {
+          return [...acc, { ...stage, id: 3, title: "Stage 3: JE Template Generation" }];
+        }
+        return [...acc, stage];
+      }, []),
   );
 
   useEffect(() => {
@@ -152,9 +183,17 @@ export const JournalEntryDetail: React.FC = () => {
   );
   // Static step-through flow: progress starts at 20% and each clicked stage turns green
   const STATIC_BASE_PROGRESS = 20;
-  const [staticDoneCount, setStaticDoneCount] = useState(0);
+  // Entry already finished in this session (list shows Completed) -> reopen with all stages done
+  const staticAlreadyCompleted = usesStaticTemplate && uploadedEntry?.status === "completed";
+  const [staticDoneCount, setStaticDoneCount] = useState(
+    staticAlreadyCompleted ? stages.length : 0,
+  );
   const [progress, setProgress] = useState(
-    usesStaticTemplate ? STATIC_BASE_PROGRESS : (entry?.progress ?? 0),
+    staticAlreadyCompleted
+      ? 100
+      : usesStaticTemplate
+        ? STATIC_BASE_PROGRESS
+        : (entry?.progress ?? 0),
   );
   const [isProcessing, setIsProcessing] = useState(false);
   const [expandedStageId, setExpandedStageId] = useState<number | null>(() => {
@@ -175,8 +214,9 @@ export const JournalEntryDetail: React.FC = () => {
   const isAdhoc = path?.startsWith("adhoc") ?? false;
 
   useEffect(() => {
-    if (id) updateEntryStatus(id, entryStatus);
-  }, [id, entryStatus, updateEntryStatus]);
+    // Static flow: list status is driven by staticAllDone (below), not by entryStatus
+    if (id && !usesStaticTemplate) updateEntryStatus(id, entryStatus);
+  }, [id, entryStatus, updateEntryStatus, usesStaticTemplate]);
 
   const handleToggleExpand = useCallback((stageId: number) => {
     setExpandedStageId((prev) => (prev === stageId ? null : stageId));
@@ -387,6 +427,14 @@ export const JournalEntryDetail: React.FC = () => {
   const staticAllDone =
     usesStaticTemplate && staticDoneCount === stages.length;
 
+  // Static flow finished -> mark this journal ID Completed in the Journal Entry list too.
+  // (On a browser refresh the context resets uploaded SOP entries back to Pending.)
+  useEffect(() => {
+    if (staticAllDone && uploadedEntry && uploadedEntry.status !== "completed") {
+      updateEntryStatus(uploadedEntry.id, "completed");
+    }
+  }, [staticAllDone, uploadedEntry, updateEntryStatus]);
+
   if (!entry) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -410,7 +458,8 @@ export const JournalEntryDetail: React.FC = () => {
   return (
     <div className="flex flex-col h-full relative">
       {isProcessing && <ProcessingOverlay />}
-      <JEHeader entry={{ ...entry, status: entryStatus }} />
+      {/* Static flow: once the last stage is clicked, the header badge turns Pending -> Completed */}
+      <JEHeader entry={{ ...entry, status: staticAllDone ? "completed" : entryStatus }} />
       <div className="flex-1 overflow-y-auto px-6 pt-0 py-5 bg-[var(--dgem-gray-100)]">
         <div className="bg-white rounded-lg shadow-sm p-6 border border-[var(--dgem-light-grayish-blue)]">
           {" "}
@@ -446,6 +495,24 @@ export const JournalEntryDetail: React.FC = () => {
                 .every((s) => s.status === "completed");
               const isNextStaticStage =
                 usesStaticTemplate && idx === staticDoneCount;
+
+              // Grouped stage (Logistics Stage 2): clicking expands the pipeline view inline
+              if (stage.subStages?.length) {
+                return (
+                  <StageCard
+                    key={stage.id}
+                    stage={stage}
+                    isExpanded={expandedStageId === stage.id}
+                    onToggleExpand={handleToggleExpand}
+                    onStageClick={isNextStaticStage ? handleStaticStageClick : undefined}
+                    forceClickable={isNextStaticStage}
+                  >
+                    {stage.status === "completed" ? (
+                      <StageGroupView subStages={stage.subStages} />
+                    ) : null}
+                  </StageCard>
+                );
+              }
 
               return (
                 <StageCard

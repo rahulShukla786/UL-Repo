@@ -216,9 +216,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
                   {row.map((cell, ci) => (
                     <td
                       key={ci}
-                      className={`px-4 py-2.5 whitespace-nowrap ${
-                        ci === 0 ? "text-brand font-medium" : "text-gray-700"
-                      } ${isEditing ? "cursor-text hover:bg-blue-50 focus:outline-none focus:ring-1 focus:ring-brand" : ""}`}
+                      className={`px-4 py-2.5 whitespace-nowrap text-gray-700 ${isEditing ? "cursor-text hover:bg-blue-50 focus:outline-none focus:ring-1 focus:ring-brand" : ""}`}
                       contentEditable={isEditing}
                       suppressContentEditableWarning
                     >
