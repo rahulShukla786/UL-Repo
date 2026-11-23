@@ -42,6 +42,12 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
           style={{ width: `${Math.min(progress, 100)}%` }}
         />
       </div>
+      {/* Once every stage is done the bar turns green and Cancel becomes "Completed" */}
+      {showCancel && status === 'completed' && (
+        <span className="text-completed text-[13px] font-medium shrink-0">
+          Completed
+        </span>
+      )}
       {showCancel && status !== 'completed' && status !== 'failed' && (
         <button
           onClick={onCancel}

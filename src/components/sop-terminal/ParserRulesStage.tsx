@@ -14,7 +14,6 @@ import { Select, SelectItem } from "../shared/Select";
 import { cn } from "../../lib/utils";
 import type { UploadedFile } from "./ParserUploadStage";
 import {
-  LOGISTICS_RULES,
   getRulesForLob,
   type LobRule,
   type SOPLob,
@@ -50,10 +49,10 @@ interface ParserRulesStageProps {
   onSaveToLibrary?: (fileName: string, rules: SOPRule[], lob: SOPLob) => void;
 }
 
-// Enabled rules of the LOB rule set, mapped to the parser row shape
+// All rules of the LOB rule set (incl. ones marked enabled = false, e.g. Warehouse
+// R109/R110), mapped to the parser row shape
 const toRuleItems = (lobRules: LobRule[]): RuleItem[] =>
   lobRules
-    .filter((rule) => rule.enabled)
     .map((rule) => ({
       id: rule.rule_id,
       order: rule.order_of_execution,
@@ -142,15 +141,13 @@ export const ParserRulesStage: React.FC<ParserRulesStageProps> = ({
   lob,
   onSaveToLibrary,
 }) => {
-  // Logistics rules are bundled; Warehouse rules are read from warehouseDocs/WH_rule_111.xlsx
-  const [rules, setRules] = useState<RuleItem[]>(() =>
-    lob === "Logistics" ? toRuleItems(LOGISTICS_RULES) : [],
-  );
-  const [rulesLoading, setRulesLoading] = useState(lob !== "Logistics");
+  // Logistics rules: Rules/All_116_Rules_File_Check_Results.xlsx (116 rules)
+  // Warehouse rules: warehouseDocs/WH_rule_111.xlsx
+  const [rules, setRules] = useState<RuleItem[]>([]);
+  const [rulesLoading, setRulesLoading] = useState(true);
   const [rulesError, setRulesError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (lob === "Logistics") return;
     let cancelled = false;
     setRulesLoading(true);
     setRulesError(null);
@@ -338,7 +335,7 @@ export const ParserRulesStage: React.FC<ParserRulesStageProps> = ({
             Business Rules (
             {rulesLoading
               ? "loading…"
-              : `${rules.length} enabled ${lob === "Warehouse" ? "warehouse" : "pallet"} rules`}
+              : `${rules.length} ${lob === "Warehouse" ? "warehouse" : "logistics"} rules`}
             )
           </h3>
           <p className="mt-1 text-[13px] text-[var(--bright-black)]">

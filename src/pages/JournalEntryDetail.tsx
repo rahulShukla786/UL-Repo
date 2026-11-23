@@ -419,9 +419,10 @@ export const JournalEntryDetail: React.FC = () => {
             {entry.executionHistory || entry.executionStarted}
           </p>
           <div className="mb-5">
+            {/* Static flow: after the last stage is clicked the bar is green and shows "Completed" */}
             <ProgressBar
               progress={progress}
-              status={entryStatus}
+              status={staticAllDone ? "completed" : entryStatus}
               showCancel={!isHistorical}
             />
           </div>

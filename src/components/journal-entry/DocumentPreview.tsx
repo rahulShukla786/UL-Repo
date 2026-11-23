@@ -156,7 +156,10 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
           <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
             {title}
           </span>
-          <span className="text-[13px] text-gray-700 truncate">{fileName}</span>
+          {/* INPUT / OUTPUT PREVIEW label shows the file name without .xlsx/.xls/.csv */}
+          <span className="text-[13px] text-gray-700 truncate">
+            {fileName.replace(/\.(xlsx|xls|csv)$/i, "")}
+          </span>
         </div>
         {sourcePreviewTable && (
           <button

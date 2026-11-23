@@ -1,6 +1,6 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Search, ChevronRight } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { DataTable } from "../components/shared/DataTable";
 import { Input } from "../components/shared/Input";
 import { Select, SelectItem } from "../components/shared/Select";
@@ -10,7 +10,7 @@ import { cn } from "../lib/utils";
 import { useJournalEntries } from "../context/JournalEntriesContext";
 import { useSOPStore } from "../stores/sopStore";
 import type { SOPEntry, SOPStatus } from "../stores/sopStore";
-import type { SOPLob } from "../data/ruleSets";
+import { SOP_LOBS, getRulesForLob, type LobRule, type SOPLob } from "../data/ruleSets";
 import type { ColumnDef } from "@tanstack/react-table";
 
 const SOP_CATEGORIES = [
@@ -62,8 +62,59 @@ export const SOPTerminal: React.FC = () => {
   const navigate = useNavigate();
   const { sopId } = useParams<{ sopId: string }>();
   const { entries: journalEntries, addEntryFromSOP } = useJournalEntries();
-  const { sopEntries, addEntry } = useSOPStore();
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("SOP Library");
+  const { sopEntries, addEntry, setEntries } = useSOPStore();
+
+  // SOPs saved with an incomplete rule set get the full one: Logistics = 116 rules
+  // (Rules/All_116_Rules_File_Check_Results.xlsx), Warehouse = 111 rules incl. R109/R110
+  // (warehouseDocs/WH_rule_111.xlsx). Saved statuses are kept by rule id,
+  // and rules added by hand stay at the end.
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all(SOP_LOBS.map((lob) => getRulesForLob(lob)))
+      .then((ruleLists) => {
+        if (cancelled) return;
+        const rulesByLob = new Map<SOPLob, LobRule[]>(
+          SOP_LOBS.map((lob, index) => [lob, ruleLists[index]]),
+        );
+        const current = useSOPStore.getState().sopEntries;
+        let changed = false;
+        const next = current.map((entry) => {
+          const lobRules = rulesByLob.get(entry.lob);
+          if (!lobRules || lobRules.length === 0) return entry;
+          const fullIds = new Set(lobRules.map((rule) => rule.rule_id));
+          const presentCount = entry.rules.filter((rule) => fullIds.has(rule.id)).length;
+          if (presentCount >= fullIds.size) return entry;
+          changed = true;
+          const statusById = new Map(entry.rules.map((rule) => [rule.id, rule.status]));
+          const customRules = entry.rules.filter((rule) => !fullIds.has(rule.id));
+          const rules = [
+            ...lobRules.map((rule) => ({
+              id: rule.rule_id,
+              order: 0,
+              title: rule.title,
+              text: rule.description,
+              type: rule.rule_type,
+              status: statusById.get(rule.rule_id) ?? ("Pending" as const),
+            })),
+            ...customRules,
+          ].map((rule, index) => ({ ...rule, order: index + 1 }));
+          return { ...entry, rules };
+        });
+        if (changed) setEntries(next);
+      })
+      .catch(() => {
+        // keep saved rules if the Excel file cannot be read
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [setEntries]);
+  const location = useLocation();
+  // Tab can be passed via navigation state (keeps the tab if the route change remounts the page)
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>(() => {
+    const tab = (location.state as { tab?: string } | null)?.tab;
+    return tab === "SOP Parser" ? "SOP Parser" : "SOP Library";
+  });
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(SOP_CATEGORIES[0]);
   const [selectedStatus, setSelectedStatus] = useState<SOPStatus | "All">("All");
@@ -75,8 +126,10 @@ export const SOPTerminal: React.FC = () => {
       // Journal Entry row gets the same LOB (Logistics / Warehouse)
       addEntryFromSOP(fileName, lob);
     }
+    // After saving, show the SOP Library list (not a previously opened SOP's detail page)
     setActiveTab("SOP Library");
-  }, [addEntry, addEntryFromSOP]);
+    navigate("/sop-terminal", { state: { tab: "SOP Library" } });
+  }, [addEntry, addEntryFromSOP, navigate]);
 
   const allJEOptions = useMemo(() => {
     return journalEntries.map((je) => `${je.id} - ${je.name}`);
@@ -174,7 +227,11 @@ export const SOPTerminal: React.FC = () => {
             <button
               key={tab}
               type="button"
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                setActiveTab(tab);
+                // Switching tabs leaves an open SOP detail so the Library opens on its list
+                if (sopId) navigate("/sop-terminal", { state: { tab } });
+              }}
               className={cn(
                 "-mb-px border-b-2 px-0 pb-3 text-[15px] font-medium transition-colors cursor-pointer cursor-pointer",
                 isActive
@@ -191,7 +248,7 @@ export const SOPTerminal: React.FC = () => {
       {activeTab === "SOP Library" ? (
         selectedEntry ? (
           <SOPLibraryDetailPanel
-            key={selectedEntry.id}
+            key={`${selectedEntry.id}-${selectedEntry.rules.length}`}
             entryId={selectedEntry.id}
             sopCode={selectedEntry.sopCode}
             name={selectedEntry.name}
