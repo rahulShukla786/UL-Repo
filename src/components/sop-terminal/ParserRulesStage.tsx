@@ -226,6 +226,10 @@ export const ParserRulesStage: React.FC<ParserRulesStageProps> = ({
     const current = rules.find((rule) => rule.id === id);
     if (!current) return;
 
+    // Adjust puts the rule back to Pending
+    setRules((prev) =>
+      prev.map((rule) => (rule.id === id ? { ...rule, status: "Pending" as const } : rule)),
+    );
     setEditingRuleId(id);
     setEditDraftText(current.text);
     setEditDraftType(current.type);
@@ -699,7 +703,8 @@ export const ParserRulesStage: React.FC<ParserRulesStageProps> = ({
                               <button
                                 type="button"
                                 onClick={() => updateRuleStatus(rule.id, "Approved")}
-                                className="block h-8 w-full rounded-lg border border-completed bg-completed-surface px-2 text-center text-[12px] font-medium text-completed hover:bg-completed-surface"
+                                disabled={rule.status === "Approved"}
+                                className="block h-8 w-full rounded-lg border border-completed bg-completed-surface px-2 text-center text-[12px] font-medium text-completed hover:bg-completed-surface disabled:cursor-not-allowed disabled:opacity-40"
                               >
                                 Approve
                               </button>
@@ -713,7 +718,8 @@ export const ParserRulesStage: React.FC<ParserRulesStageProps> = ({
                               <button
                                 type="button"
                                 onClick={() => updateRuleStatus(rule.id, "Rejected")}
-                                className="block h-8 w-full rounded-lg border border-failed bg-failed-surface px-2 text-center text-[12px] text-failed hover:bg-failed-surface"
+                                disabled={rule.status === "Rejected"}
+                                className="block h-8 w-full rounded-lg border border-failed bg-failed-surface px-2 text-center text-[12px] text-failed hover:bg-failed-surface disabled:cursor-not-allowed disabled:opacity-40"
                               >
                                 Reject
                               </button>
