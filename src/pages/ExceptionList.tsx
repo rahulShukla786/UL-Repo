@@ -301,7 +301,7 @@ export const ExceptionList: React.FC = () => {
       {/* Breadcrumb */}
       <div className="flex items-center gap-1 text-[12px] text-gray-500 mb-4">
         <button
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate("/journal-entry")}
           className="hover:text-brand transition-colors cursor-pointer"
         >
           AI Journal Entry

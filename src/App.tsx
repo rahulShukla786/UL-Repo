@@ -7,7 +7,8 @@ import { JournalEntriesProvider } from "./context/JournalEntriesContext";
 import { ManualQueue } from "./pages/ManualQueue";
 import { ExceptionList } from "./pages/ExceptionList";
 import { SOPTerminal } from "./pages/SOPTerminal";
-import { Dashboard } from "./pages/Dashboard";
+// Dashboard page hidden: /dashboard redirects to Journal Entry (page file kept)
+// import { Dashboard } from "./pages/Dashboard";
 
 // Placeholder page for other nav items
 const PlaceholderPage: React.FC<{ title: string }> = ({ title }) => (
@@ -33,7 +34,7 @@ function App() {
             <Route path="/journal-entry/:id" element={<JournalEntryDetail />} />
 
             {/* Nav pages */}
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Navigate to="/journal-entry" replace />} />
             <Route path="/work-list" element={<ManualQueue />} />
             <Route path="/exception" element={<ExceptionList />} />
             <Route path="/sop-terminal" element={<SOPTerminal />} />

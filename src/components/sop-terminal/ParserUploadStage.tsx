@@ -202,7 +202,8 @@ export const ParserUploadStage: React.FC<ParserUploadStageProps> = ({
       </div>
 
       <div className="mt-3.5 flex flex-wrap items-end justify-end gap-4">
-        <div className="w-56">
+        {/* SOP Type selector hidden (UI only); lob is still pre-selected from the file name */}
+        <div className="hidden w-56">
           <label className="mb-1 block text-[12px] font-medium text-gray-700">
             SOP Type (Line of Business)
           </label>

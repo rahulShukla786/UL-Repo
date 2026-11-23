@@ -33,7 +33,7 @@ export const JEHeader: React.FC<JEHeaderProps> = ({ entry }) => {
       <div className="px-6 py-3 border-b border-gray-200">
         <nav className="flex items-center gap-1 text-[12px] text-gray-500">
           <button
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate("/journal-entry")}
             className="hover:text-brand transition-colors cursor-pointer"
           >
             OD Journal Entry

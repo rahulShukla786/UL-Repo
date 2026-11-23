@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Download, Search } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { CheckCircle2, Download, FileInput, FileOutput, ListChecks, Loader2, Search } from "lucide-react";
 import type { StageData, SourcePreviewTable } from "../../types";
 import { DocumentPreview } from "./DocumentPreview";
 import { EmailDetails } from "./stages/EmailDetails";
@@ -57,7 +57,49 @@ const availableTabs = (s: StageData): TabKey[] => {
   return tabs;
 };
 
-const TAB_LABELS: Record<TabKey, string> = { input: "Input", rules: "Rules", output: "Output" };
+/** Simulated process steps of a sub-stage (email stages have one "reading email" step) */
+const runSteps = (s: StageData): TabKey[] => (isEmailStage(s) ? ["input"] : availableTabs(s));
+
+/** Process-step tab labels: read input -> apply rules -> retrieve output */
+const TAB_LABELS: Record<TabKey, string> = {
+  input: "Reading Input",
+  rules: "Applying Rules",
+  output: "Retrieving Output",
+};
+const TAB_ICONS: Record<TabKey, React.ElementType> = {
+  input: FileInput,
+  rules: ListChecks,
+  output: FileOutput,
+};
+
+const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const uniqueRuleCount = (s: StageData) => new Set(ruleGroups(s).flatMap((g) => g.rules)).size;
+
+/** Simulated processing steps shown while a tab "runs" (UI only, no logic change) */
+const PROCESS_TITLES: Record<TabKey, string> = {
+  input: "Reading input data",
+  rules: "Applying business rules",
+  output: "Retrieving output",
+};
+const successText = (s: StageData, tab: TabKey): string => {
+  if (tab === "input") {
+    const rec = s.totalRecords != null ? ` \u00b7 ${s.totalRecords.toLocaleString("en-GB")} records` : "";
+    return `Input read successfully \u00b7 ${plural(inputTables(s).length, "file")}${rec}`;
+  }
+  if (tab === "rules") return `${plural(uniqueRuleCount(s), "rule")} applied successfully`;
+  return `Output retrieved successfully \u00b7 ${plural(outputTables(s).length, "file")} generated`;
+};
+
+/** Lightweight loading placeholder (no progress bar): spinner + one line of text */
+const LoadingPanel: React.FC<{ tab: TabKey; waiting: boolean }> = ({ tab, waiting }) => (
+  <div className="flex flex-col items-center justify-center gap-2 border border-dashed border-gray-200 rounded-lg py-12 bg-gray-50/50">
+    <Loader2 size={22} className="animate-spin text-brand" />
+    <p className="text-[13px] font-medium text-gray-700">{`${PROCESS_TITLES[tab]}\u2026`}</p>
+    <p className="text-[11px] text-gray-400">
+      {waiting ? "Queued \u00b7 starts after the previous step" : "Processing, please wait"}
+    </p>
+  </div>
+);
 
 /** Split "R001 — Confirms …" (Warehouse) or "R001: Confirms …" (Logistics) into id + text */
 const parseRule = (r: string): { id: string; text: string } => {
@@ -151,11 +193,96 @@ export const StageGroupView: React.FC<StageGroupViewProps> = ({ subStages }) => 
   const selected = subStages.find((s) => s.id === selectedId) ?? subStages[0];
   const tabs = selected ? availableTabs(selected) : [];
   const [activeTab, setActiveTab] = useState<TabKey>("input");
+  // Simulated processing: completed steps per sub-stage + the step currently running
+  const [done, setDone] = useState<Record<number, TabKey[]>>({});
+  const [running, setRunning] = useState<{ stageId: number; tab: TabKey; pct: number } | null>(null);
+
+  // While true, the right-side tab follows the step that is currently running
+  const [follow, setFollow] = useState(true);
+  // Auto-run: when Stage 2 opens, every sub-stage runs one after another
+  const [auto, setAuto] = useState(true);
+
+  /** Start (or resume) a sub-stage: runs Reading Input -> Applying Rules -> Retrieving Output in sequence */
+  const startStage = (s: StageData, doneMap: Record<number, TabKey[]> = done) => {
+    const next = runSteps(s).find((t) => !doneMap[s.id]?.includes(t));
+    if (next) setRunning({ stageId: s.id, tab: next, pct: 0 });
+    return Boolean(next);
+  };
+
+  // The sub-stage selected on first render starts as if it was clicked
+  useEffect(() => {
+    if (selected) startStage(selected);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Advance the step slowly (fast at first, slower near the end), then move to the next step
+  useEffect(() => {
+    if (!running) return;
+    if (running.pct >= 100) {
+      const t = setTimeout(() => {
+        const { stageId, tab } = running;
+        const doneNow = Array.from(new Set([...(done[stageId] ?? []), tab]));
+        setDone((d) => ({ ...d, [stageId]: doneNow }));
+        const doneMap = { ...done, [stageId]: doneNow };
+        const stage = subStages.find((s) => s.id === stageId);
+        const next = stage ? runSteps(stage).find((x) => !doneNow.includes(x)) : undefined;
+        if (next) {
+          setRunning({ stageId, tab: next, pct: 0 });
+          if (follow && selectedId === stageId) setActiveTab(next);
+          return;
+        }
+        setRunning(null);
+        if (!auto) return;
+        // Sub-stage finished: move on to the next sub-stage that is not complete yet
+        const nextStage = subStages.find((s) => runSteps(s).some((x) => !doneMap[s.id]?.includes(x)));
+        if (nextStage) {
+          setSelectedId(nextStage.id);
+          setActiveTab(availableTabs(nextStage)[0] ?? "input");
+          setFollow(true);
+          startStage(nextStage, doneMap);
+        } else {
+          // All sub-stages complete: go back to the first one on Reading Input
+          setAuto(false);
+          setSelectedId(subStages[0]?.id ?? null);
+          setActiveTab("input");
+        }
+      }, 300);
+      return () => clearTimeout(t);
+    }
+    const step = running.pct < 50 ? 5 : running.pct < 80 ? 3 : 2;
+    const t = setTimeout(() => setRunning((r) => (r ? { ...r, pct: Math.min(100, r.pct + step) } : r)), 60);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running, done, follow, auto, selectedId, subStages]);
+
+  /** Card progress: starts at 20% when clicked, then fills as each step completes */
+  const cardProgress = (s: StageData) => {
+    const total = runSteps(s).length || 1;
+    const doneN = done[s.id]?.length ?? 0;
+    const run = running?.stageId === s.id ? running : null;
+    const frac = (doneN + (run ? run.pct / 100 : 0)) / total;
+    const pct = doneN >= total ? 100 : run || doneN ? Math.min(100, 20 + frac * 80) : 0;
+    const complete = doneN >= total;
+    const status = run
+      ? isEmailStage(s)
+        ? "Reading email\u2026"
+        : `${TAB_LABELS[run.tab]}\u2026`
+      : complete
+        ? "Completed"
+        : doneN === 0
+          ? "Not started"
+          : `${doneN} of ${total} steps done`;
+    return { pct, complete, status };
+  };
 
   // Selecting a stage always opens its first tab (Input when the stage has inputs)
   const selectStage = (s: StageData) => {
     setSelectedId(s.id);
     setActiveTab(availableTabs(s)[0] ?? "input");
+    setFollow(true);
+    // A manual click stops the auto-run; the clicked sub-stage starts (a completed one is not re-run)
+    setAuto(false);
+    if (running?.stageId !== s.id) startStage(s);
   };
 
   if (!selected) return null;
@@ -198,6 +325,30 @@ export const StageGroupView: React.FC<StageGroupViewProps> = ({ subStages }) => 
                       )}
                     </div>
                     <p className="text-[11px] text-gray-400 mt-1">{stageSummary(s)}</p>
+                    {/* Process progress (email stages included) */}
+                    {(() => {
+                      const p = cardProgress(s);
+                      return (
+                        <div className="mt-2">
+                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className={cn("h-full rounded-full transition-all duration-100", p.complete ? "bg-green-500" : "bg-brand")}
+                              style={{ width: `${p.pct}%` }}
+                            />
+                          </div>
+                          <p
+                            className={cn(
+                              "flex items-center gap-1 text-[10px] mt-1",
+                              p.complete ? "text-green-600 font-semibold" : "text-gray-500",
+                            )}
+                          >
+                            {p.complete && <CheckCircle2 size={11} />}
+                            {p.status}
+                            <span className="ml-auto">{Math.round(p.pct)}%</span>
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}
@@ -242,22 +393,50 @@ export const StageGroupView: React.FC<StageGroupViewProps> = ({ subStages }) => 
             {/* Tabs: only those the stage actually has (hidden for email stages) */}
             {!isEmail && (
             <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-4">
-              {tabs.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setActiveTab(t)}
-                  className={cn(
-                    "flex-1 py-1.5 text-[13px] font-medium rounded-md transition-colors cursor-pointer",
-                    currentTab === t ? "bg-white text-brand shadow-sm" : "text-gray-500 hover:text-gray-700",
-                  )}
-                >
-                  {TAB_LABELS[t]}
-                </button>
-              ))}
+              {tabs.map((t) => {
+                const isDone = !!done[selected.id]?.includes(t);
+                const isRunning = running?.stageId === selected.id && running.tab === t;
+                const Icon = isRunning ? Loader2 : isDone ? CheckCircle2 : TAB_ICONS[t];
+                return (
+                  <button
+                    key={t}
+                    onClick={() => {
+                      setActiveTab(t);
+                      setFollow(false);
+                    }}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[13px] font-medium rounded-md transition-colors cursor-pointer",
+                      currentTab === t ? "bg-white text-brand shadow-sm" : "text-gray-500 hover:text-gray-700",
+                    )}
+                  >
+                    <Icon
+                      size={14}
+                      className={cn(isRunning && "animate-spin", isDone && !isRunning && "text-green-600")}
+                    />
+                    {TAB_LABELS[t]}
+                  </button>
+                );
+              })}
             </div>
             )}
 
-            {currentTab === "input" && (
+            {/* Step not finished yet: simple loading placeholder (progress is shown on the card) */}
+            {!isEmail && currentTab && !done[selected.id]?.includes(currentTab) && (
+              <LoadingPanel
+                tab={currentTab}
+                waiting={!(running?.stageId === selected.id && running.tab === currentTab)}
+              />
+            )}
+
+            {/* Completed step: success note above the content */}
+            {!isEmail && currentTab && done[selected.id]?.includes(currentTab) && (
+              <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-green-50 border border-green-200 text-[12px] font-medium text-green-700">
+                <CheckCircle2 size={14} />
+                {successText(selected, currentTab)}
+              </div>
+            )}
+
+            {currentTab === "input" && (isEmail || done[selected.id]?.includes("input")) && (
               <div className="space-y-4">
                 {/* Reference files (e.g. Warehouse snapshot.xlsx / FC Update.xlsx) */}
                 {!!selected.stageReferenceFiles?.length && (
@@ -291,11 +470,11 @@ export const StageGroupView: React.FC<StageGroupViewProps> = ({ subStages }) => 
               </div>
             )}
 
-            {currentTab === "rules" && (
+            {currentTab === "rules" && done[selected.id]?.includes("rules") && (
               <RulesPanel key={selected.id} groups={ruleGroups(selected)} />
             )}
 
-            {currentTab === "output" && (
+            {currentTab === "output" && done[selected.id]?.includes("output") && (
               <div className="space-y-4">
                 {outputTables(selected).map((t) => (
                   <DocumentPreview

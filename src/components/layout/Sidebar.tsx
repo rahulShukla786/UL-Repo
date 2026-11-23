@@ -1,7 +1,6 @@
 import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard,
   FileText,
   BookOpen,
   ChevronLeft,
@@ -17,7 +16,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
+  // Dashboard hidden from navigation (page kept; /dashboard redirects to Journal Entry)
   { label: "Journal Entry", icon: FileText, to: "/journal-entry" },
   // Work List and Exception tabs hidden from navigation
   { label: "SOP Terminal", icon: BookOpen, to: "/sop-terminal" },
