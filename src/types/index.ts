@@ -252,10 +252,14 @@ export interface StageReferenceFile {
 
 export interface SourcePreviewTable {
   fileName: string;
+  /** Optional label shown next to INPUT / OUTPUT PREVIEW (download still uses fileName) */
+  displayName?: string;
   /** Path under /public of the actual file; when present the preview is read from it */
   filePath?: string;
   /** Server URL to download the full original file (e.g. large files kept in a UC volume) */
   downloadUrl?: string;
+  /** Show every column in the preview (default preview shows only the first 5 columns) */
+  showAllColumns?: boolean;
   columns: string[];
   rows: string[][];
   totalLabel?: string;
