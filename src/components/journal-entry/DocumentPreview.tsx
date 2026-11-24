@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FileText, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { FileText, Download, ChevronLeft, ChevronRight, Loader2, Check, AlertCircle } from "lucide-react";
 import * as XLSX from "xlsx";
 import type { AdHocPreparationRow, SourcePreviewTable } from "../../types";
 import { AdHocPreparationTable } from "./AdHocPreparationTable";
@@ -61,6 +61,43 @@ const downloadTableAsExcel = (table: SourcePreviewTable) => {
   XLSX.writeFile(workbook, name);
 };
 
+// Fetch a file with progress reporting, then hand it to the browser as a download.
+// onProgress gets 0-100, or null when the server sends no Content-Length.
+const downloadWithProgress = async (
+  url: string,
+  name: string,
+  onProgress: (pct: number | null) => void,
+) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Download failed (${res.status})`);
+  const total = Number(res.headers.get("content-length")) || 0;
+  let blob: Blob;
+  if (res.body && total > 0) {
+    const reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let received = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      onProgress(Math.min(100, Math.round((received / total) * 100)));
+    }
+    blob = new Blob(chunks as BlobPart[]);
+  } else {
+    onProgress(null);
+    blob = await res.blob();
+  }
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+};
+
+type DownloadState = "idle" | "downloading" | "done" | "error";
+
 // Mock spreadsheet rows for standard flow xlsx preview
 const SPREADSHEET_HEADERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 const SPREADSHEET_COLS = [
@@ -106,6 +143,31 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   const [page, setPage] = useState(0);
   // Table read from the actual selected file (if it exists in /public)
   const [liveTable, setLiveTable] = useState<SourcePreviewTable | null>(null);
+  // Download button feedback: spinner + % while fetching, then "Downloaded" / "Retry"
+  const [dlState, setDlState] = useState<DownloadState>("idle");
+  const [dlProgress, setDlProgress] = useState<number | null>(null);
+
+  const handleDownload = async (table: SourcePreviewTable) => {
+    if (dlState === "downloading") return;
+    const downloadUrl = providedTable?.downloadUrl;
+    const url = downloadUrl ?? (liveTable?.filePath ? encodeURI(liveTable.filePath) : null);
+    const name = downloadUrl ? providedTable?.fileName || fileName : liveTable?.fileName || fileName;
+    setDlState("downloading");
+    setDlProgress(url ? 0 : null);
+    try {
+      if (url) {
+        await downloadWithProgress(url, name, setDlProgress);
+      } else {
+        // No original file -> build the .xlsx from the table data
+        await new Promise((r) => setTimeout(r, 300));
+        downloadTableAsExcel(table);
+      }
+      setDlState("done");
+    } catch {
+      setDlState("error");
+    }
+    setTimeout(() => setDlState("idle"), 2500);
+  };
 
   // Reset to the first page whenever another file is selected
   useEffect(() => setPage(0), [fileName]);
@@ -130,8 +192,12 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
 
   const sourcePreviewTable = liveTable ?? providedTable;
 
+  // Tables flagged showAllColumns display every column; others the first N
+  const columnCount = providedTable?.showAllColumns
+    ? sourcePreviewTable?.columns.length ?? 0
+    : PREVIEW_COLUMN_COUNT;
   const previewColumns = sourcePreviewTable
-    ? sourcePreviewTable.columns.slice(0, PREVIEW_COLUMN_COUNT)
+    ? sourcePreviewTable.columns.slice(0, columnCount)
     : [];
   const totalRows = sourcePreviewTable?.rows.length ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalRows / PREVIEW_PAGE_SIZE));
@@ -139,7 +205,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   const pageRows = sourcePreviewTable
     ? sourcePreviewTable.rows
         .slice(pageStart, pageStart + PREVIEW_PAGE_SIZE)
-        .map((row) => row.slice(0, PREVIEW_COLUMN_COUNT))
+        .map((row) => row.slice(0, columnCount))
     : [];
 
   const isExcel =
@@ -156,35 +222,58 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
           <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
             {title}
           </span>
-          {/* INPUT / OUTPUT PREVIEW label shows the file name without .xlsx/.xls/.csv */}
+          {/* INPUT / OUTPUT PREVIEW label: displayName if set, else file name without .xlsx/.xls/.csv */}
           <span className="text-[13px] text-gray-700 truncate">
-            {fileName.replace(/\.(xlsx|xls|csv)$/i, "")}
+            {providedTable?.displayName ?? fileName.replace(/\.(xlsx|xls|csv)$/i, "")}
           </span>
         </div>
         {sourcePreviewTable && (
           <button
-            onClick={() => {
-              // Full file served by the backend (UC volume) -> download it directly
-              const downloadUrl = providedTable?.downloadUrl;
-              if (downloadUrl) {
-                const a = document.createElement("a");
-                a.href = downloadUrl;
-                a.download = providedTable?.fileName || fileName;
-                a.click();
-              } else if (liveTable?.filePath) {
-                // Real file available -> download it as-is; otherwise build from table
-                const a = document.createElement("a");
-                a.href = encodeURI(liveTable.filePath);
-                a.download = liveTable.fileName;
-                a.click();
-              } else {
-                downloadTableAsExcel(sourcePreviewTable);
-              }
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-brand bg-white border border-brand rounded-lg hover:bg-brand-surface transition-colors cursor-pointer flex-shrink-0"
+            onClick={() => handleDownload(sourcePreviewTable)}
+            disabled={dlState === "downloading"}
+            aria-busy={dlState === "downloading"}
+            aria-live="polite"
+            title={dlState === "downloading" ? "Downloading file, please wait..." : "Download the original file"}
+            className={`relative overflow-hidden flex items-center justify-center gap-1.5 min-w-[118px] px-3 py-1.5 text-[12px] font-medium bg-white border rounded-lg transition-colors flex-shrink-0 ${
+              dlState === "done"
+                ? "text-green-700 border-green-600 bg-green-50"
+                : dlState === "error"
+                  ? "text-red-600 border-red-500 hover:bg-red-50 cursor-pointer"
+                  : dlState === "downloading"
+                    ? "text-brand border-brand cursor-wait"
+                    : "text-brand border-brand hover:bg-brand-surface cursor-pointer"
+            }`}
           >
-            <Download size={14} />
-            Download
+            {/* Progress fill behind the label while downloading */}
+            {dlState === "downloading" && (
+              <span
+                className={`absolute inset-y-0 left-0 bg-brand-surface transition-all duration-200 ${dlProgress === null ? "w-full animate-pulse" : ""}`}
+                style={dlProgress !== null ? { width: `${dlProgress}%` } : undefined}
+              />
+            )}
+            <span className="relative flex items-center gap-1.5">
+              {dlState === "downloading" ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  {dlProgress !== null && dlProgress > 0 ? `Downloading ${dlProgress}%` : "Preparing..."}
+                </>
+              ) : dlState === "done" ? (
+                <>
+                  <Check size={14} />
+                  Downloaded
+                </>
+              ) : dlState === "error" ? (
+                <>
+                  <AlertCircle size={14} />
+                  Retry
+                </>
+              ) : (
+                <>
+                  <Download size={14} />
+                  Download
+                </>
+              )}
+            </span>
           </button>
         )}
       </div>
@@ -203,8 +292,8 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
           <table className="w-max min-w-full text-[13px]">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {previewColumns.map((col) => (
-                  <th key={col} className="px-4 py-2.5 text-[11px] font-semibold text-gray-700 uppercase tracking-wide text-left whitespace-nowrap">
+                {previewColumns.map((col, ci) => (
+                  <th key={`${ci}-${col}`} className="px-4 py-2.5 text-[11px] font-semibold text-gray-700 uppercase tracking-wide text-left whitespace-nowrap">
                     {col}
                   </th>
                 ))}

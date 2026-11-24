@@ -25,6 +25,10 @@ import {
   ACCR_ESTIMATE_OUTPUT_ROWS,
   OCTOBER_MONTH_BL_COLUMNS,
   OCTOBER_MONTH_BL_ROWS,
+  BM_INPUT_OCTOBER_DOWNLOAD_URL,
+  ACCR_ESTIMATE_INPUT_DOWNLOAD_URL,
+  OCTOBER_MONTH_BL_DOWNLOAD_URL,
+  ACCR_ESTIMATE_OUTPUT_DOWNLOAD_URL,
 } from "./stage5DataProcessing4";
 import {
   REACCRUAL_INPUT_TOTAL_RECORDS,
@@ -34,8 +38,29 @@ import {
   SUMMARY_ROWS_STAGE7,
   FINAL_SUMMARY_COLUMNS,
   FINAL_SUMMARY_ROWS,
+  REACCRUAL_INPUT_DOWNLOAD_URL,
+  SUMMARY_STAGE7_DOWNLOAD_URL,
+  FINAL_SUMMARY_DOWNLOAD_URL,
 } from "./stage7DataProcessing6";
-import { FINAL_BLACKLINE_COLUMNS, FINAL_BLACKLINE_ROWS } from "./stage8JETemplate";
+import { FINAL_BLACKLINE_COLUMNS, FINAL_BLACKLINE_ROWS, FINAL_BLACKLINE_DOWNLOAD_URL } from "./stage8JETemplate";
+import {
+  BM_INPUT_DOWNLOAD_URL,
+  BM_INPUT_TOTAL_RECORDS,
+  BM_INPUT_UNIQUE_PLANTS,
+  BM_INPUT_COUNTRIES,
+  BM_INPUT_TOTAL_COST,
+  BM_INPUT_COLUMNS,
+  BM_INPUT_ROWS,
+  SAP_DATA1_DOWNLOAD_URL,
+  SAP_DATA1_TOTAL_RECORDS,
+  SAP_DATA1_UNIQUE_COST_CENTERS,
+  SAP_DATA1_TOTAL_AMOUNT,
+  SAP_DATA1_COLUMNS,
+  SAP_DATA1_ROWS,
+  SUMMARY_FOR_REACCRUAL_DOWNLOAD_URL,
+  SUMMARY_FOR_REACCRUAL_COLUMNS,
+  SUMMARY_FOR_REACCRUAL_ROWS,
+} from "./stage2DataProcessing1";
 import {
   RULES_116_SOURCING,
   RULES_116_VALIDATION,
@@ -414,64 +439,6 @@ const palletRulesById = (ids: string[]): string[] =>
     .filter((rule): rule is (typeof PALLET_ACCRUAL_RULES)[number] => !!rule)
     .map((rule) => `${rule.rule_id.split(" - ").pop()}: ${rule.title}`);
 
-const PLACEHOLDER_PLANTS = [
-  ["DE01", "Germany", "Heppenheim"],
-  ["DE02", "Germany", "Buxtehude"],
-  ["PL01", "Poland", "Katowice"],
-  ["PL02", "Poland", "Bydgoszcz"],
-  ["AT01", "Austria", "Vienna"],
-  ["CH01", "Switzerland", "Thayngen"],
-  ["NL01", "Netherlands", "Rotterdam"],
-  ["BE01", "Belgium", "Brussels"],
-  ["FR01", "France", "Le Meux"],
-  ["IT01", "Italy", "Sanguinetto"],
-  ["ES01", "Spain", "Leioa"],
-  ["UK01", "United Kingdom", "Port Sunlight"],
-];
-
-const fmtEUR = (n: number) =>
-  n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-const BM_INPUT_ROWS: string[][] = PLACEHOLDER_PLANTS.map(([plant, country, name], i) => [
-  country,
-  plant,
-  i % 3 === 0 ? "Copack" : "Own Plant",
-  name,
-  "May",
-  "2026",
-  fmtEUR(12000 + i * 1850.5),
-  "EUR",
-]);
-
-const SAP_DATA_ROWS: string[][] = PLACEHOLDER_PLANTS.map(([plant], i) => [
-  `51${String(1000 + i * 7)}`,
-  `CC${plant}PAL`,
-  "6140210",
-  "31.05.2026",
-  `CHEP INV ${plant} MAY26`,
-  fmtEUR(10500 + i * 1620.25),
-  "EUR",
-  plant,
-]);
-
-const REACCRUAL_ROWS: string[][] = PLACEHOLDER_PLANTS.map(([plant, country], i) => {
-  const toBeInvoiced = 12000 + i * 1850.5;
-  const sapInvoiced = 10500 + i * 1620.25;
-  const opening = 2500 + i * 310;
-  const reaccrual = toBeInvoiced - sapInvoiced;
-  return [
-    plant,
-    country,
-    fmtEUR(opening),
-    fmtEUR(toBeInvoiced),
-    fmtEUR(sapInvoiced),
-    fmtEUR(reaccrual),
-    fmtEUR(opening + reaccrual),
-  ];
-});
-
-const sumCol = (rows: string[][], col: number) =>
-  rows.reduce((s, r) => s + Number(r[col].replace(/,/g, "")), 0);
 
 export const STD_STAGE2_COMPLETED: StageData = {
   id: 2,
@@ -480,7 +447,7 @@ export const STD_STAGE2_COMPLETED: StageData = {
   status: "completed",
   componentType: "data_extraction",
   extractedCount: 2,
-  totalRecords: BM_INPUT_ROWS.length + SAP_DATA_ROWS.length,
+  totalRecords: BM_INPUT_TOTAL_RECORDS + SAP_DATA1_TOTAL_RECORDS,
   sources: [
     {
       type: "SHAREDRIVE",
@@ -498,38 +465,46 @@ export const STD_STAGE2_COMPLETED: StageData = {
   confidenceScore: 90,
   sourcePreviewTables: [
     {
+      // Docs/B&M Input.xlsx — all columns with data, first 5 rows; Download = original file
       fileName: "B&M Input.xlsx",
-      filePath: "/data/Stage 2 Data Extraction/B&M Input.xlsx",
-      columns: ["Country", "Plant Code", "Category", "Plant Name", "Month", "Year", "Total Cost", "Currency"],
+      downloadUrl: BM_INPUT_DOWNLOAD_URL,
+      showAllColumns: true,
+      columns: BM_INPUT_COLUMNS,
       rows: BM_INPUT_ROWS,
       extractedFields: [
-        { label: "Total Records", value: String(BM_INPUT_ROWS.length) },
-        { label: "Unique Plants", value: String(new Set(BM_INPUT_ROWS.map((r) => r[1])).size) },
-        { label: "Accrual Period", value: "May 2026" },
-        { label: "Total Cost", value: `\u20ac${fmtEUR(sumCol(BM_INPUT_ROWS, 6))}` },
+        { label: "Total Records", value: BM_INPUT_TOTAL_RECORDS.toLocaleString("en-GB") },
+        { label: "Unique Plants", value: String(BM_INPUT_UNIQUE_PLANTS) },
+        { label: "Countries", value: String(BM_INPUT_COUNTRIES) },
+        { label: "Accrual Period", value: "September 2026" },
+        { label: "Converted Total", value: `\u20ac${BM_INPUT_TOTAL_COST}` },
       ],
       rules: palletRulesById(["R001", "R004", "R008", "R012", "R015"]),
     },
     {
+      // Docs/SAP data 1.xlsx — all columns with data, first 5 rows; Download = original file
       fileName: "SAP Data 1.xlsx",
-      filePath: "/data/Stage 2 Data Extraction/SAP Data 1.xlsx",
-      columns: ["Document No", "Cost Center", "GL Account", "Posting Date", "Header Text", "Amount", "Currency", "Plant"],
-      rows: SAP_DATA_ROWS,
+      displayName: "SAP Data",
+      downloadUrl: SAP_DATA1_DOWNLOAD_URL,
+      showAllColumns: true,
+      columns: SAP_DATA1_COLUMNS,
+      rows: SAP_DATA1_ROWS,
       extractedFields: [
-        { label: "Total Records", value: String(SAP_DATA_ROWS.length) },
-        { label: "Unique Cost Centers", value: String(new Set(SAP_DATA_ROWS.map((r) => r[1])).size) },
-        { label: "Posting Period", value: "May 2026" },
-        { label: "Total SAP Invoiced", value: `\u20ac${fmtEUR(sumCol(SAP_DATA_ROWS, 5))}` },
+        { label: "Total Records", value: String(SAP_DATA1_TOTAL_RECORDS) },
+        { label: "Unique Cost Centers", value: String(SAP_DATA1_UNIQUE_COST_CENTERS) },
+        { label: "Posting Period", value: "September 2026" },
+        { label: "Total SAP Invoiced", value: `\u20ac${SAP_DATA1_TOTAL_AMOUNT}` },
       ],
       // Rules/SAP_Data_to_SAP_Data_with_CHEP_stage1.xlsx
       rules: rules116ById(["R002", "R017", "R022", "R023", "R024", "R025", "R026", "R036", "R018"]),
     },
   ],
   outputPreviewTable: {
+    // Docs/Summary for Reaccrual.xlsx — all named columns, first 5 rows; Download = original file
     fileName: "Summary for Reaccrual.xlsx",
-    filePath: "/data/Stage 2 Data Extraction/Summary for Reaccrual.xlsx",
-    columns: ["Plant", "Country", "Opening Balance", "To Be Invoiced", "SAP Invoiced", "Monthly Re-Accrual", "Final Result"],
-    rows: REACCRUAL_ROWS,
+    downloadUrl: SUMMARY_FOR_REACCRUAL_DOWNLOAD_URL,
+    showAllColumns: true,
+    columns: SUMMARY_FOR_REACCRUAL_COLUMNS,
+    rows: SUMMARY_FOR_REACCRUAL_ROWS,
     rules: palletRulesById(["R024", "R039", "R040", "R041"]),
   },
 };
@@ -557,10 +532,12 @@ export const STD_STAGE3_DATA_PROCESSING2_COMPLETED: StageData = {
     {
       fileName: "October 2026 CHEP Accrual.xlsx",
       filePath: "/data/Stage 3 Data Processing 2/October 2026 CHEP Accrual.xlsx",
-      // Full 66 MB file lives in UC volume /Volumes/r2a/journal/ul_app_files (served by app.py)
+      // Source = Docs/Raw Data.xlsx (66 MB) kept in UC volume /Volumes/r2a/journal/ul_app_files
+      // (served by app.py); downloaded under the display name above.
       downloadUrl: "/api/files/chep-accrual",
       columns: CHEP_ACCRUAL_COLUMNS,
       rows: CHEP_ACCRUAL_ROWS,
+      showAllColumns: true,
       extractedFields: [
         { label: "Total Records", value: CHEP_ACCRUAL_TOTAL_RECORDS.toLocaleString("en-GB") },
         { label: "Unique Plants", value: String(CHEP_ACCRUAL_UNIQUE_PLANTS) },
@@ -649,7 +626,10 @@ export const STD_STAGE5_DATA_PROCESSING4_COMPLETED: StageData = {
   confidenceScore: 92,
   sourcePreviewTables: [
     {
+      // Excellist/B&M_input_october.xlsx — all columns, first 5 rows; Download = original file
       fileName: "B&M_input_october.xlsx",
+      downloadUrl: BM_INPUT_OCTOBER_DOWNLOAD_URL,
+      showAllColumns: true,
       columns: BM_INPUT_OCTOBER_COLUMNS,
       rows: BM_INPUT_OCTOBER_ROWS,
       extractedFields: [
@@ -661,7 +641,10 @@ export const STD_STAGE5_DATA_PROCESSING4_COMPLETED: StageData = {
       rules: rules116ById(["R039", "R040", "R041", "R043", "R042", "R044", "R045", "R046", "R062", "R063"]),
     },
     {
+      // Excellist/ACCR_estimate.xlsx — all columns, first 5 rows; Download = original file
       fileName: "ACCR_estimate.xlsx",
+      downloadUrl: ACCR_ESTIMATE_INPUT_DOWNLOAD_URL,
+      showAllColumns: true,
       columns: ACCR_ESTIMATE_INPUT_COLUMNS,
       rows: ACCR_ESTIMATE_INPUT_ROWS,
       extractedFields: [
@@ -675,14 +658,20 @@ export const STD_STAGE5_DATA_PROCESSING4_COMPLETED: StageData = {
   ],
   outputPreviewTables: [
     {
+      // Excellist/ACCR_estimate_output.xlsx — all columns with data, first 5 rows; Download = original file
       fileName: "ACCR_estimate.xlsx",
+      downloadUrl: ACCR_ESTIMATE_OUTPUT_DOWNLOAD_URL,
+      showAllColumns: true,
       columns: ACCR_ESTIMATE_OUTPUT_COLUMNS,
       rows: ACCR_ESTIMATE_OUTPUT_ROWS,
       // Rules/Stage_3.xlsx — ACCR_estimate_output (1).xlsx
       rules: rules116ById(["R074", "R075", "R064", "R065", "R066", "R076", "R077", "R078", "R111", "R048", "R049", "R050"]),
     },
     {
+      // Excellist/october_month_BL.xlsx — all columns with data, first 5 rows; Download = original file
       fileName: "october_month_BL.xlsx",
+      downloadUrl: OCTOBER_MONTH_BL_DOWNLOAD_URL,
+      showAllColumns: true,
       columns: OCTOBER_MONTH_BL_COLUMNS,
       rows: OCTOBER_MONTH_BL_ROWS,
       // Rules/Stage_3.xlsx — october_month_BL.xlsx
@@ -721,16 +710,6 @@ export const STD_STAGE6_DATA_PROCESSING5_COMPLETED: StageData = {
       "Please keep re-accrual only for following countries: ES, BE, CZ, HU",
       "Please raise credit accrual for Promo repack Cross Charge to MSO - 323,161.36 EUR in Total.",
     ],
-    bodyTable: {
-      title: "GL 31931001",
-      rows: [
-        ["1047433799", "(14,882.55)"],
-        ["1047533799", "(14,485.01)"],
-        ["1064433799", "(49,662.49)"],
-        ["1064533799", "(331.45)"],
-        ["1095533799", "(42,260.75)"],
-      ],
-    },
   },
 };
 
@@ -750,7 +729,10 @@ export const STD_STAGE7_DATA_PROCESSING6_COMPLETED: StageData = {
   confidenceScore: 92,
   sourcePreviewTables: [
     {
+      // Excellist/output/Reaccrual_input.xlsx — all columns with data, first 5 rows; Download = original file
       fileName: "Reaccrual_input.xlsx",
+      downloadUrl: REACCRUAL_INPUT_DOWNLOAD_URL,
+      showAllColumns: true,
       columns: REACCRUAL_INPUT_COLUMNS,
       rows: REACCRUAL_INPUT_ROWS,
       extractedFields: [
@@ -772,14 +754,20 @@ export const STD_STAGE7_DATA_PROCESSING6_COMPLETED: StageData = {
   ],
   outputPreviewTables: [
     {
+      // Excellist/output/Summary.xlsx — all columns, first 5 rows; Download = original file
       fileName: "Summary.xlsx",
+      downloadUrl: SUMMARY_STAGE7_DOWNLOAD_URL,
+      showAllColumns: true,
       columns: SUMMARY_COLUMNS_STAGE7,
       rows: SUMMARY_ROWS_STAGE7,
       // Rules/Process 6 1.xlsx — Summary.xlsx
       rules: rules116ById(["R090", "R091", "R092", "R093", "R094"]),
     },
     {
+      // Excellist/output/Final_summary.xlsx — all columns, first 5 rows; Download = original file
       fileName: "Final_summary.xlsx",
+      downloadUrl: FINAL_SUMMARY_DOWNLOAD_URL,
+      showAllColumns: true,
       columns: FINAL_SUMMARY_COLUMNS,
       rows: FINAL_SUMMARY_ROWS,
       // Rules/Process 6 1.xlsx — Final_summary.xlsx
@@ -1133,10 +1121,12 @@ export const STATIC_STANDARD_DETAIL_STAGES: StageData[] = [
     ...STD_STAGE4_APPROVED,
     id: 8,
     title: "Stage 8: JE Template Generation",
-    // BlackLine template preview (5 columns × 5 rows) with Download button
+    // BlackLine template preview (all 94 columns × first 5 rows); Download = original final_blackline.xlsx
     outputPreviewTables: [
       {
         fileName: "final_blackline.xlsx",
+        downloadUrl: FINAL_BLACKLINE_DOWNLOAD_URL,
+        showAllColumns: true,
         columns: FINAL_BLACKLINE_COLUMNS,
         rows: FINAL_BLACKLINE_ROWS,
       },

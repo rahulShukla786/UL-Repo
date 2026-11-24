@@ -23,8 +23,13 @@ VOLUME_PATH = os.environ.get("UL_APP_FILES_VOLUME", "/Volumes/r2a/journal/ul_app
 
 # Allow-list of downloadable files: key used in the URL -> file name in the volume
 VOLUME_FILES = {
-    "chep-accrual": "October 2026 CHEP Accrual.xlsx",
+    "chep-accrual": "Raw Data.xlsx",
     "wh-accruals-sop": "EU_Deliver_WH_Accruals_V5_check2.docx",
+}
+
+# Name the browser saves the file as (defaults to the volume file name)
+DOWNLOAD_NAMES = {
+    "chep-accrual": "October 2026 CHEP Accrual.xlsx",
 }
 
 CHUNK_SIZE = 1024 * 1024  # 1 MB
@@ -69,7 +74,8 @@ def download_volume_file(file_key: str):
         finally:
             stream.close()
 
-    headers = {"Content-Disposition": f"attachment; filename*=UTF-8''{quote(file_name)}"}
+    download_name = DOWNLOAD_NAMES.get(file_key, file_name)
+    headers = {"Content-Disposition": f"attachment; filename*=UTF-8''{quote(download_name)}"}
     if getattr(resp, "content_length", None):
         headers["Content-Length"] = str(resp.content_length)
     return StreamingResponse(
@@ -89,7 +95,8 @@ def spa(full_path: str):
     index = DIST_DIR / "index.html"
     if not index.is_file():
         raise HTTPException(status_code=503, detail="Frontend not built")
-    return FileResponse(index)
+    # Never cache index.html, so every deploy (new hashed JS bundle) shows up on reload
+    return FileResponse(index, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
 
 def ensure_frontend_built():
