@@ -45,7 +45,7 @@ const stageSummary = (s: StageData): string => {
   const outCount = outputTables(s).length;
   const parts = [`${inCount} input file${inCount === 1 ? "" : "s"}`];
   if (outCount) parts.push(`${outCount} output file${outCount === 1 ? "" : "s"}`);
-  if (s.totalRecords != null) parts.push(`${s.totalRecords.toLocaleString("en-GB")} records`);
+  // Records count removed from the card summary (user, 2026-11-24)
   return parts.join(" \u00b7 ");
 };
 
@@ -83,8 +83,7 @@ const PROCESS_TITLES: Record<TabKey, string> = {
 };
 const successText = (s: StageData, tab: TabKey): string => {
   if (tab === "input") {
-    const rec = s.totalRecords != null ? ` \u00b7 ${s.totalRecords.toLocaleString("en-GB")} records` : "";
-    return `Input read successfully \u00b7 ${plural(inputTables(s).length, "file")}${rec}`;
+    return `Input read successfully \u00b7 ${plural(inputTables(s).length, "file")}`;
   }
   if (tab === "rules") return `${plural(uniqueRuleCount(s), "rule")} applied successfully`;
   return `Output retrieved successfully \u00b7 ${plural(outputTables(s).length, "file")} generated`;
@@ -370,11 +369,6 @@ export const StageGroupView: React.FC<StageGroupViewProps> = ({ subStages }) => 
                 <p className="text-[11px] text-gray-500">Input</p>
                 <p className="text-[16px] font-semibold text-gray-900">
                   {isEmailStage(selected) ? "Email" : `${inCount} file${inCount === 1 ? "" : "s"}`}
-                  {selected.totalRecords != null && (
-                    <span className="text-[12px] font-normal text-gray-500">
-                      {` \u00b7 ${selected.totalRecords.toLocaleString("en-GB")} records`}
-                    </span>
-                  )}
                 </p>
               </div>
               <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">

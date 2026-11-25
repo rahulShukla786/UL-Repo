@@ -205,6 +205,8 @@ export const DataExtraction: React.FC<DataExtractionProps> = ({
 
   return (
     <div className="mt-2 space-y-4">
+      {!stage.hideInputSection && (
+      <>
       {/* Source count info + optional Reference Files download buttons */}
       <div className="flex items-center justify-between gap-3">
         <p className="text-[13px] text-gray-700">
@@ -297,6 +299,8 @@ export const DataExtraction: React.FC<DataExtractionProps> = ({
             );
           })()}
         </div>
+      )}
+      </>
       )}
 
       {/* Output Preview — full width, no Rule Summary panel */}

@@ -207,6 +207,9 @@ export interface StageData {
   outputPreviewTables?: SourcePreviewTable[];
   // Reference files offered in the "Reference Files" download menu of a stage
   stageReferenceFiles?: StageReferenceFile[];
+  // Hide the input part of a data_extraction stage (sources line, source cards,
+  // input preview + Rule Summary) and show only the output preview(s)
+  hideInputSection?: boolean;
   // Per-source extracted fields (indexed by source position) — summary changes on file select
   extractedFieldsBySource?: ExtractedField[][];
   // Data Validation

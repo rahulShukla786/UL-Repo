@@ -1,12 +1,12 @@
 // ── Warehouse Stage 4 (JE Template Generation) ─────────────────────────────────
 // Input file  : Excellist/NewWH/Trintech_ (1).xlsx (Sheet1, 10 rows, all shown with pagination)
-// Output file : warehouseDocs/Data/SIRIUS_UL Calc & Post_1.xlsx
-//               (sheet "1.SIRIUS_UL Calc & Post _1", header on row 3, line rows "L")
-// Preview = first 5 rows x 5 columns taken from each file.
+// Output file : warehouseDocs/SIRIUS_UL Calc & Post.xlsx
+//               (Sheet2, field codes on row 1, header on row 2, H record row 3, "L" lines from row 4)
+// Output preview = all 24 columns of the file, first 5 records (H + 4 L lines), empty cells = "-".
 // Download = the original Excel file (bundled by Vite via ?url).
 // Warehouse flow ends at this stage (Logistics keeps all 8 stages).
 import trintechUrl from "../../Excellist/NewWH/Trintech_ (1).xlsx?url";
-import siriusUrl from "../../warehouseDocs/Data/SIRIUS_UL Calc & Post_1.xlsx?url";
+import siriusUrl from "../../warehouseDocs/SIRIUS_UL Calc & Post.xlsx?url";
 import type { SourceFile, SourcePreviewTable, StageData } from "../types";
 
 // Rule Summary for Stage 4 — from warehouseDocs/Data/Stage-final-rules.xlsx (sheet "Trintech_BlackLine_Rules").
@@ -44,15 +44,22 @@ const TRINTECH_INPUT: SourcePreviewTable = {
 };
 
 const SIRIUS_OUTPUT: SourcePreviewTable = {
-  fileName: "SIRIUS_UL Calc & Post_1.xlsx",
+  fileName: "SIRIUS_UL Calc & Post.xlsx",
   downloadUrl: siriusUrl,
-  columns: ["Posting Key", "Account", "Amount in Document Currency", "Cost Center", "Line Item Text"],
+  showAllColumns: true,
+  columns: [
+    "Record Type", "JE Classification*", "Document Type (S)*", "Document Date*", "Posting Date*",
+    "Posting Period", "Document Header Text*", "Header Company Code*", "Document Currency*", "Reference Doc",
+    "Translation Date*", "Exchange Rate Override", "VAT Date", "Reversal Reason", "Reversal Date",
+    "Calculate Tax ?*", "Tax Payable", "Posting Key*", "Cross Company Code", "Account*",
+    "Amount in Document Currency*", "Cost Center", "Line Item Text*", "Tax Code",
+  ],
   rows: [
-    ["40", "31812002", "44,391.01", "1000532699", "P1026 ACR BNL C600 Inbound"],
-    ["40", "31812003", "28,601.17", "1000532699", "P1026 ACR BNL C600 Outbound"],
-    ["40", "31812005", "50,344.97", "1000532699", "P1026 ACR BNL C600 Picking"],
-    ["50", "14410020", "123,337.16", "-", "P1026 ACR BNL C600"],
-    ["40", "31812004", "89,989.36", "1000532699", "P1026 ACR BNL C600 Storage"],
+    ["H", "ACCRUALS", "Y1", "2026-10-31", "2026-10-31", "-", "P1026 ACR BNL", "2611", "EUR", "-", "2026-10-31", "-", "-", "05", "2026-11-01", "2026-10-31", "N", "-", "-", "-", "-", "-", "-", "-"],
+    ["L", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "40", "2611", "31812002", "44,391.01", "1000532699", "P1026 ACR BNL C600 Inbound", "-"],
+    ["L", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "40", "2611", "31812003", "28,601.17", "1000532699", "P1026 ACR BNL C600 Outbound", "-"],
+    ["L", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "40", "2611", "31812005", "50,344.97", "1000532699", "P1026 ACR BNL C600 Picking", "-"],
+    ["L", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "50", "2611", "14410020", "123,337.16", "-", "P1026 ACR BNL C600", "-"],
   ],
 };
 
@@ -77,6 +84,9 @@ export const WAREHOUSE_STAGE4: Partial<StageData> = {
   extractedFieldsBySource: undefined,
   extractedFields: undefined,
   stageReferenceFiles: undefined,
+  // Per user: hide the input part (sources line, Trintech_ (1).xlsx card, input preview,
+  // Rule Summary) — Stage 3 "JE Template Generation" shows only the SIRIUS output preview.
+  hideInputSection: true,
 };
 
 /** Number of stages shown for Warehouse JEs. */

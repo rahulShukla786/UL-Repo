@@ -20,6 +20,7 @@ import {
 } from "../data/ruleSets";
 import { WAREHOUSE_STAGE2 } from "../data/warehouseStage2";
 import { WAREHOUSE_STAGE3 } from "../data/warehouseStage3";
+import { WAREHOUSE_SUBPROCESS3 } from "../data/warehouseSubProcess3";
 import { WAREHOUSE_STAGE4, WAREHOUSE_STAGE_COUNT } from "../data/warehouseStage4";
 import { JEHeader } from "../components/journal-entry/JEHeader";
 import { ProgressBar } from "../components/shared/ProgressBar";
@@ -144,7 +145,11 @@ export const JournalEntryDetail: React.FC = () => {
         if (stage.id >= 2 && stage.id <= lastGroupedId) {
           const group = acc.find((s) => s.id === 2 && s.subStages);
           if (group) {
-            group.subStages = [...(group.subStages ?? []), stage];
+            // Warehouse: after "Process SAP data and build plant summaries" (stage 3) add
+            // sub-process 3 "Process Accrual data and generate Snapshot_new" (same flow).
+            const extra =
+              isWarehouseEntry && stage.id === 3 ? [{ ...stage, ...WAREHOUSE_SUBPROCESS3 } as StageData] : [];
+            group.subStages = [...(group.subStages ?? []), stage, ...extra];
             return acc;
           }
           return [
